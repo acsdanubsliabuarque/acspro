@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ACS PRO - v12.1 MODULAR</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <h2 style="margin:0">ACS PRO v12.1</h2>
+    <div id="contagem" style="font-size: 10px; opacity: 0.8">Carregando módulos...</div>
+</header>
+
+<div class="container">
+    <!-- HOME -->
+    <div id="tela-home">
+        <div class="card">
+            <h3>Pesquisar Munícipe</h3>
+            <input type="text" id="h-nome" placeholder="NOME OU PARTE...">
+            <button class="btn btn-main" onclick="UI.searchPessoa()">BUSCAR NOME</button>
+            <hr style="margin:20px 0; opacity:0.1">
+            <label>Filtrar por Logradouro</label>
+            <select id="h-rua" class="select-ruas"></select>
+            <div class="grid-2">
+                <input type="text" id="h-num" placeholder="Nº">
+                <button class="btn btn-outline" onclick="UI.searchEndereco()">FILTRAR RUA</button>
+            </div>
+        </div>
+        <button class="btn btn-main" style="background:#673ab7" onclick="Registry.startNew()">+ NOVO CADASTRO INDIVIDUAL</button>
+        <div class="grid-2">
+            <button class="btn btn-outline" onclick="Visits.viewPendencies()">PENDÊNCIAS</button>
+            <button class="btn btn-outline" onclick="Registry.viewPregnant()">GESTANTES</button>
+        </div>
+        <div class="card" style="background:#f8f9fa;">
+            <h4>Ferramentas de Backup</h4>
+            <button class="btn btn-sm btn-outline" onclick="Backup.exportCSV()">Exportar Planilha Excel</button>
+            <button class="btn btn-sm btn-outline" onclick="Backup.createBackup()">Gerar Arquivo Backup</button>
+            <input type="file" id="file-input" style="font-size:11px" onchange="Backup.restoreBackup(event)">
+        </div>
+    </div>
+
+    <!-- RESULTADOS -->
+    <div id="tela-resultados" class="hidden">
+        <div id="lista-resultados"></div>
+        <button class="btn btn-outline" onclick="Nav.goBack()">VOLTAR</button>
+        <button class="btn btn-outline" onclick="Nav.goTo('tela-home', true)">INÍCIO</button>
+    </div>
+
+    <!-- HISTÓRICO -->
+    <div id="tela-historico" class="hidden">
+        <h3 id="hist-nome-header"></h3>
+        <div id="lista-historico"></div>
+        <button class="btn btn-outline" onclick="Nav.goBack()">VOLTAR</button>
+    </div>
+
+    <!-- CADASTRO -->
+    <div id="tela-cadastro" class="hidden">
+        <div id="passo-1">
+            <div class="card">
+                <h3>1. Identificação</h3>
+                <label>NOME COMPLETO *</label><input type="text" id="c-nome" placeholder="OBRIGATÓRIO">
+                <label>NASCIMENTO *</label><input type="text" id="c-nasc" placeholder="DD/MM/AAAA">
+                <div class="grid-2">
+                    <div><label>SEXO</label><select id="c-sexo"><option value="" disabled selected>ESCOLHA...</option><option value="MASCULINO">MASCULINO</option><option value="FEMININO">FEMININO</option><option value="OUTRO">OUTRO</option></select></div>
+                    <div><label>RAÇA / COR</label><select id="c-raca"><option value="" disabled selected>ESCOLHA...</option><option value="BRANCA">BRANCA</option><option value="PRETA">PRETA</option><option value="PARDA">PARDA</option><option value="AMARELA">AMARELA</option><option value="INDÍGENA">INDÍGENA</option></select></div>
+                </div>
+                <label>NOME DA MÃE</label><input type="text" id="c-mae">
+                <label>CPF</label><input type="text" id="c-cpf" placeholder="000.000.000-00" onblur="Utils.validateCPFInterface()">
+                <div id="input-cpf-error" class="input-error-msg">CPF INVÁLIDO!</div>
+                <label>CNS</label><input type="text" id="c-cns" placeholder="15 DÍGITOS" onblur="Utils.validateCNSInterface()">
+                <div id="input-cns-error" class="input-error-msg">CNS INVÁLIDO!</div>
+                <div class="grid-2">
+                    <div><label>TEL PRINCIPAL</label><input type="text" id="c-telprincipal" class="tel" placeholder="(00) 00000-0000"></div>
+                    <div><label>TEL RECADO</label><input type="text" id="c-telrecado" class="tel" placeholder="(00) 00000-0000"></div>
+                </div>
+            </div>
+            <button class="btn btn-main" onclick="Registry.nextStep(2)">ENDEREÇO >></button>
+            <button class="btn btn-danger hidden" id="btn-delete-patient" onclick="Registry.deletePatient()">EXCLUIR CADASTRO</button>
+            <button class="btn btn-outline" onclick="Nav.confirmExit('tela-home')">CANCELAR</button>
+        </div>
+        <div id="passo-2" class="hidden">
+            <div class="card">
+                <h3>2. Localização</h3>
+                <label>LOGRADOURO</label><select id="c-rua" class="select-ruas"></select>
+                <div class="grid-3">
+                    <div><label>Nº *</label><input type="text" id="c-num"></div>
+                    <div><label>MA</label><input type="text" id="c-ma" placeholder="00"></div>
+                    <div><label>SEG</label><input type="text" id="c-seg" placeholder="0"></div>
+                </div>
+                <label>COMPLEMENTO</label><input type="text" id="c-comp" placeholder="CASA / FUNDOS">
+                <hr>
+                <label>RESPONSÁVEL FAMILIAR?</label>
+                <select id="c-is-resp" onchange="Registry.toggleRelation()"><option value="SIM">SIM, É O CHEFE</option><option value="NAO">NÃO, É DEPENDENTE</option></select>
+                <div id="div-relacao" class="hidden">
+                    <label>PARENTESCO</label>
+                    <select id="c-relacao">
+                        <option value="Cônjuge/Companheiro">Cônjuge / Companheiro(a)</option>
+                        <option value="Filho(a)">Filho(a)</option>
+                        <option value="Enteado(a)">Enteado(a)</option>
+                        <option value="Neto(a)/Bisneto(a)">Neto(a) / Bisneto(a)</option>
+                        <option value="Pai/Mãe">Pai / Mãe</option>
+                        <option value="Sogro(a)">Sogro(a)</option>
+                        <option value="Irmão/Irmã">Irmão / Irmã</option>
+                        <option value="Genro/Nora">Genro / Nora</option>
+                        <option value="Outro parente">Outro parente</option>
+                        <option value="Não parente">Não parente</option>
+                    </select>
+                    <div style="background:#eee; padding:10px; margin-top:10px; border-radius:8px;">
+                        <input type="text" id="b-resp-nome" placeholder="BUSCAR NOME DO CHEFE">
+                        <button class="btn btn-sm btn-outline" onclick="Registry.searchResponsible()">LOCALIZAR CHEFE</button>
+                        <div id="lista-resp-resultados"></div>
+                        <input type="hidden" id="c-resp-id">
+                        <div id="resp-selecionado" class="hidden">VINCULADO A: <span id="txt-resp-selecionado"></span><br><button class="btn btn-xs btn-danger" onclick="Registry.removeResponsible()">REMOVER VÍNCULO</button></div>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-outline" onclick="Registry.setStep(1)">VOLTAR</button>
+            <button class="btn btn-main" onclick="Registry.nextStep(3)">SAÚDE >></button>
+        </div>
+        <div id="passo-3" class="hidden">
+            <div class="card">
+                <h3>3. Saúde (Ficha Completa)</h3>
+                <div class="grid-check">
+                    <label class="check-box"><input type="checkbox" id="ch-hiper"> HIPERTENSÃO ARTERIAL</label>
+                    <label class="check-box"><input type="checkbox" id="ch-diab"> DIABETES MELLITUS</label>
+                    <label class="check-box"><input type="checkbox" id="ch-gest" onchange="Registry.toggleDUM()"> GESTANTE</label>
+                    <div id="div-dum" class="hidden" style="padding-left:20px; border-left:2px solid var(--gestante-pink);"><label>DUM</label><input type="text" id="c-dum" placeholder="DD/MM/AAAA"></div>
+                    <label class="check-box"><input type="checkbox" id="ch-acam"> ACAMADO / DOMICILIADO</label>
+                    <label class="check-box"><input type="checkbox" id="ch-def"> POSSUI DEFICIÊNCIA</label>
+                    <label class="check-box"><input type="checkbox" id="ch-fum"> FUMANTE</label>
+                    <label class="check-box"><input type="checkbox" id="ch-alcool"> USO DE ÁLCOOL</label>
+                    <label class="check-box"><input type="checkbox" id="ch-drogas"> OUTRAS DROGAS</label>
+                    <label class="check-box"><input type="checkbox" id="ch-avc"> TEVE AVC / DERRAME</label>
+                    <label class="check-box"><input type="checkbox" id="ch-infarto"> TEVE INFARTO</label>
+                    <label class="check-box"><input type="checkbox" id="ch-resp"> DOENÇA RESPIRATÓRIA</label>
+                    <label class="check-box"><input type="checkbox" id="ch-renal"> DOENÇA RENAL CRÔNICA</label>
+                    <label class="check-box"><input type="checkbox" id="ch-cancer"> CÂNCER</label>
+                    <label class="check-box"><input type="checkbox" id="ch-hans"> HANSENÍASE</label>
+                    <label class="check-box"><input type="checkbox" id="ch-tb"> TUBERCULOSE</label>
+                    <label class="check-box"><input type="checkbox" id="ch-mental"> SAÚDE MENTAL</label>
+                </div>
+                <label>NOTAS PERMANENTES</label>
+                <textarea id="c-obs" rows="3"></textarea>
+            </div>
+            <button class="btn btn-outline" onclick="Registry.setStep(2)">VOLTAR</button>
+            <button class="btn btn-save" onclick="Registry.save()">GRAVAR CADASTRO</button>
+        </div>
+    </div>
+
+    <!-- VISITA -->
+    <div id="tela-visita" class="hidden">
+        <div id="v-alerta" class="card"></div>
+        <div id="v-alerta-gestante" class="hidden"></div>
+        <div id="v-familiares" class="card hidden"><div id="lista-familiares-vinculados"></div></div>
+        <div class="card">
+            <h3>Visita: <span id="v-nome-txt"></span></h3>
+            <div class="secao-titulo">MOTIVOS OFICIAIS</div>
+            <div class="grid-check">
+                <label class="check-box"><input type="checkbox" name="motivo" value="Cadastramento/Atualização"> CADASTRAMENTO/ATUALIZAÇÃO</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Visita periódica"> VISITA PERIÓDICA</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Busca Ativa: Vacina"> BUSCA ATIVA: VACINA</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Busca Ativa: Bolsa Família"> BUSCA ATIVA: BOLSA FAMÍLIA</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="SISVAN / Pesagem"> SISVAN / PESAGEM</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Acomp: Gestante"> ACOMPANHAMENTO: GESTANTE</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Acomp: Puerpera"> ACOMPANHAMENTO: PUERPERA</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Acomp: Hipertenso"> ACOMPANHAMENTO: HIPERTENSO</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Acomp: Diabético"> ACOMPANHAMENTO: DIABÉTICO</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Acomp: Acamado"> ACOMPANHAMENTO: ACAMADO</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Acomp: Egresso"> EGRESSO DE INTERNAÇÃO</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Busca Ativa: Consulta/Exame"> BUSCA ATIVA: CONSULTA/EXAME</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Orientação/Prevenção"> ORIENTAÇÃO/PREVENÇÃO</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Outros"> OUTROS MOTIVOS</label>
+            </div>
+            <label>EVOLUÇÃO</label><textarea id="v-relato" rows="5"></textarea>
+            <label>PENDÊNCIA?</label><input type="text" id="v-pendencia">
+        </div>
+        <button class="btn btn-save" onclick="Visits.save()">SALVAR VISITA</button>
+        <button class="btn btn-outline" onclick="Nav.confirmExit('voltar')">CANCELAR</button>
+    </div>
+</div>
+
+<nav class="footer-nav">
+    <div class="nav-item active" onclick="Nav.goTo('tela-home', true)">INÍCIO</div>
+    <div class="nav-item" onclick="Visits.viewPendencies()">PENDÊNCIAS</div>
+    <div class="nav-item" onclick="Nav.confirmExit('voltar')">VOLTAR</div>
+</nav>
+
+<script src="database.js"></script>
+<script src="utils.js"></script>
+<script src="registry.js"></script>
+<script src="visits.js"></script>
+<script>
+    /* app.js - Lógica de Integração */
+    const AppState = {
+        activePatient: null, visitStartTime: null, history: ['tela-home'], unsavedChanges: false,
+        markUnsaved() { this.unsavedChanges = true; },
+        resetUnsaved() { this.unsavedChanges = false; },
+        clearSearch() { ['h-nome', 'b-resp-nome', 'b-resp-nasc'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ""; }); document.getElementById('lista-resp-resultados').innerHTML = ""; },
+        resetPatient() { this.activePatient = null; this.visitStartTime = null; this.clearSearch(); }
+    };
+
+    const Nav = {
+        init() {
+            const sels = document.querySelectorAll('.select-ruas');
+            const opts = `<option value="">ESCOLHA A RUA...</option>` + CONFIG.RUAS.map(r => `<option value="${r}">${r}</option>`).join('');
+            sels.forEach(s => s.innerHTML = opts);
+            document.addEventListener('input', e => {
+                const el = e.target;
+                if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.value = el.value.toUpperCase();
+                if (['c-nasc', 'c-dum', 'b-resp-nasc'].includes(el.id)) el.value = Utils.masks.date(el.value);
+                if (el.id === 'c-cpf') el.value = Utils.masks.cpf(el.value);
+                if (el.classList.contains('tel')) el.value = Utils.masks.phone(el.value);
+            });
+        },
+        goTo(id, reset = false) {
+            if (reset) AppState.history = ['tela-home'];
+            else if (AppState.history[AppState.history.length - 1] !== id) AppState.history.push(id);
+            document.querySelectorAll('.container > div').forEach(d => d.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+            window.scrollTo(0, 0);
+        },
+        goBack() {
+            if (AppState.history.length > 1) { AppState.history.pop(); this.goTo(AppState.history[AppState.history.length - 1]); AppState.history.pop(); }
+            else this.goTo('tela-home', true);
+        },
+        async confirmExit(dest, param = null) {
+            if (AppState.unsavedChanges && !await CustomModals.confirm("DADOS NÃO SALVOS SERÃO PERDIDOS! SAIR?")) return;
+            AppState.resetUnsaved();
+            if (dest === 'voltar') this.goBack();
+            else if (dest === 'pendencias') Visits.viewPendencies();
+            else if (dest === 'tela-historico') Visits.viewHistory(param);
+            else this.goTo(dest, true);
+        }
+    };
+
+    const UI = {
+        async buildCard(p) {
+            const s = Utils.sanitize;
+            let badges = "";
+            const list = [{k:'hiper', l:'HIPERTE.', c:'bg-hiper'}, {k:'diab', l:'DIABET.', c:'bg-dia'}, {k:'gest', l:'GESTANTE', c:'bg-gest'}, {k:'acam', l:'ACAMADO', c:'bg-acam'}, {k:'def', l:'DEFICIE.', c:'bg-def'}, {k:'fum', l:'FUMANTE', c:'bg-fum'}, {k:'renal', l:'RENAL', c:'bg-renal'}, {k:'resp', l:'RESPIR.', c:'bg-resp'}, {k:'cancer', l:'CÂNCER', c:'bg-cancer'}, {k:'mental', l:'S.MENTAL', c:'bg-mental'}];
+            list.forEach(i => { if(p[i.k]) badges += `<span class="badge ${i.c}">${i.l}</span>`; });
+            const gest = p.gest ? Utils.getGestationalInfo(p.dum) : null;
+            const visits = await DB.getByIndex("visitas", "pacienteId", p.id);
+            const activePends = visits.filter(v => v.pendencia && !v.resolvida);
+            let pendHtml = activePends.length ? `<div class="pendencia-ativa-no-card">⚠️ PENDENTE: ${activePends.map(ap => s(ap.pendencia)).join(', ')}</div>` : "";
+            return `<div class="card ${p.gest ? 'card-gestante' : ''}">
+                <div class="info-label">CIDADÃO</div><div class="info-valor"><strong>${s(p.nome)}</strong></div>
+                <div class="grid-2"><div><div class="info-label">NASCIMENTO</div><div class="info-valor">${s(p.nasc)}</div></div><div><div class="info-label">RAÇA</div><div class="info-valor">${s(p.raca)}</div></div></div>
+                <div class="info-label">ENDEREÇO</div><div class="info-valor">${s(p.rua)}, ${s(p.num)} ${s(p.comp)} | MA:${s(p.ma)}</div>
+                ${gest ? `<div class="gestante-badge-info">IG: ${gest.res} <br> DPP: ${gest.dpp} | ${gest.tri}</div>` : ''}
+                <div style="margin-top:5px;">${badges || '<small>SEM AGRAVOS</small>'}</div>${pendHtml}
+                <hr style="opacity:0.1; margin:15px 0;"><button class="btn btn-main" onclick="Visits.start(${p.id})">REGISTRAR VISITA</button>
+                <div class="grid-2"><button class="btn btn-outline btn-sm" onclick="Nav.confirmExit('tela-historico', ${p.id})">HISTÓRICO</button><button class="btn btn-outline btn-sm" onclick="Registry.prepareEdit(${p.id})">EDITAR</button></div></div>`;
+        },
+        async searchPessoa() {
+            const term = document.getElementById('h-nome').value.toUpperCase().trim();
+            if (!term) return CustomModals.alert("DIGITE UM NOME.");
+            const all = await DB.getAll("municipes");
+            this.renderList(`RESULTADOS PARA: ${term}`, all.filter(p => p.nome.includes(term)));
+        },
+        async searchEndereco() {
+            const r = document.getElementById('h-rua').value;
+            const n = document.getElementById('h-num').value.trim();
+            if (!r) return CustomModals.alert("ESCOLHA A RUA.");
+            const res = (await DB.getByIndex("municipes", "rua", r)).filter(p => !n || p.num === n);
+            this.renderList(`${r}`, res);
+        },
+        async renderList(title, arr) {
+            const list = document.getElementById('lista-resultados');
+            list.innerHTML = `<h3>${title}</h3>`;
+            if(!arr.length) list.innerHTML += "<p>NADA ENCONTRADO.</p>";
+            else for (const p of arr) list.innerHTML += await this.buildCard(p);
+            Nav.goTo('tela-resultados');
+        }
+    };
+
+    const Backup = {
+        async createBackup() {
+            const m = await DB.getAll("municipes"); const v = await DB.getAll("visitas");
+            const blob = new Blob([JSON.stringify({m, v, version: 12.1})], {type: 'application/json'});
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `BACKUP_MODULAR_${Date.now()}.json`; a.click();
+        },
+        async restoreBackup(e) {
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+                try {
+                    const d = JSON.parse(ev.target.result);
+                    const ms = d.m || d.municipes || []; const vs = d.v || d.visitas || [];
+                    for (let i of ms) { if(!i.cpf) delete i.cpf; await DB.put("municipes", i); }
+                    for (let i of vs) await DB.put("visitas", i);
+                    await DB.updateCount(); await CustomModals.alert("SUCESSO!"); location.reload();
+                } catch (err) { CustomModals.alert("ARQUIVO INVÁLIDO."); }
+            };
+            reader.readAsText(e.target.files[0]);
+        },
+        async exportCSV() {
+            const vs = await DB.getAll("visitas");
+            let csv = "\ufeffDATA;NOME;MOTIVOS;RELATO;PENDENCIA\n";
+            vs.forEach(v => csv += `${new Date(v.dataTS).toLocaleDateString()};${v.nome};${v.motivos};${v.relato};${v.pendencia}\n`);
+            const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'RELATORIO.csv'; a.click();
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', async () => { CustomModals.init(); Nav.init(); await DB.init(); });
+</script>
+</body>
+</html>

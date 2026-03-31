@@ -218,7 +218,7 @@ window.UI = {
     }
 };
 
-// 004: MOTOR DE BACKUP E EXPORTAÇÃO
+// 004: MOTOR DE BACKUP E EXPORTAÇÃO (VERSÃO CORRIGIDA PARA IMPORTAÇÃO V12)
 window.Backup = {
     async createBackup() {
         const m = await DB.getAll("municipes");
@@ -248,87 +248,96 @@ window.Backup = {
         reader.onload = async (e) => {
             try {
                 const rawData = JSON.parse(e.target.result);
-                const confirm = await Utils.CustomModals.confirm("DADOS ANTIGOS DETECTADOS. DESEJA CONVERTER E RESTAURAR?");
+                
+                // Validação de segurança
+                const confirm = await Utils.CustomModals.confirm(
+                    "ATENÇÃO: O ARQUIVO CONTÉM " + (rawData.m ? rawData.m.length : 0) + " REGISTROS.\n\nDESEJA CONVERTER E RESTAURAR AGORA?"
+                );
                 if (!confirm) return;
 
-                // 1. Identifica as fontes (m ou municipes / v ou visitas)
+                // 1. Identifica as fontes de dados (m = municipes, v = visitas)
                 const oldM = rawData.m || rawData.municipes || [];
                 const oldV = rawData.v || rawData.visitas || [];
 
-                const promises = [];
+                console.log("Iniciando conversão de dados...");
 
-                // 2. Adaptador para Municipes (Converte de V12 para V12.2)
-                oldM.forEach(p => {
+                // 2. Processa Municipes
+                for (let p of oldM) {
                     const mappedP = {
-                        id: p.id,
-                        nome: p.nome ? p.nome.toUpperCase() : "",
+                        id: Number(p.id),
+                        nome: (p.nome || "").toUpperCase().trim(),
                         nasc: p.nasc || "",
-                        sexo: p.sexo ? p.sexo.toUpperCase() : "MASCULINO",
-                        raca: p.raca ? p.raca.toUpperCase() : "PARDA",
-                        mae: p.mae ? p.mae.toUpperCase() : "",
-                        pai: p.pai ? p.pai.toUpperCase() : "",
+                        sexo: (p.sexo || "MASCULINO").toUpperCase(),
+                        raca: (p.raca || "PARDA").toUpperCase(),
+                        mae: (p.mae || "").toUpperCase(),
+                        pai: (p.pai || "").toUpperCase(),
                         cpf: p.cpf || "",
                         cns: p.cns || "",
                         tel: p.telprincipal || p.tel || "",
                         nacionalidade: "BRASILEIRA",
                         
-                        rua: p.rua || "",
-                        num: p.num || "",
-                        comp: p.comp || "CASA ÚNICA",
+                        // Campos críticos para o Índice de Endereço
+                        rua: (p.rua || "NÃO INFORMADA").toUpperCase(),
+                        num: (p.num || "S/N").toString().toUpperCase(),
+                        comp: (p.comp || "CASA ÚNICA").toUpperCase(),
                         ma: p.ma || "",
                         seg: p.seg || "",
                         
-                        isResp: p.isResp || (p.respId ? "NAO" : "SIM"),
-                        relacao: p.relacao || "",
-                        respId: p.respId || null,
+                        isResp: p.isResp === "NAO" ? "NAO" : "SIM",
+                        relacao: (p.relacao || "").toUpperCase(),
+                        respId: p.respId ? Number(p.respId) : null,
 
-                        hiper: !!p.hiper,
-                        diab: !!p.diab,
-                        gest: p.gest === 1 || p.gest === true,
+                        // Conversão de Agravos (0/1 ou boolean)
+                        hiper: p.hiper === true || p.hiper === 1,
+                        diab: p.diab === true || p.diab === 1,
+                        gest: p.gest === true || p.gest === 1,
                         dum: p.dum || "",
-                        saudeMental: p.mental || p.saudeMental || false,
-                        acamado: p.acam || p.acamado || false,
-                        fumante: p.fum || p.fumante || false,
-                        alcool: p.alcool || false,
-                        obs: p.obs || ""
+                        saudeMental: p.mental === true || p.mental === 1 || p.saudeMental === true,
+                        acamado: p.acam === true || p.acam === 1 || p.acamado === true,
+                        fumante: p.fum === true || p.fum === 1 || p.fumante === true,
+                        alcool: p.alcool === true || p.alcool === 1,
+                        obs: (p.obs || "").toUpperCase()
                     };
-                    promises.push(DB.put("municipes", mappedP));
-                });
+                    
+                    // Salva um por um para garantir a integridade
+                    await DB.put("municipes", mappedP);
+                }
 
-                // 3. Adaptador para Visitas
-                oldV.forEach(v => {
+                // 3. Processa Visitas
+                for (let v of oldV) {
                     const mappedV = {
-                        id: v.id,
-                        pacienteId: v.pacienteId,
-                        nome: v.nome ? v.nome.toUpperCase() : "",
+                        id: Number(v.id),
+                        pacienteId: Number(v.pacienteId),
+                        nome: (v.nome || "").toUpperCase(),
                         dataTS: v.dataTimestamp || v.dataTS || Date.now(),
-                        dataBR: v.dataISO ? new Date(v.dataISO).toLocaleDateString('pt-BR') : (v.dataBR || ""),
-                        turno: v.turno || "MANHÃ",
-                        motivos: v.motivos || "",
-                        relato: v.relato ? v.relato.toUpperCase() : "",
+                        // Tenta pegar a dataBR ou converter da dataISO do backup
+                        dataBR: v.dataBR || (v.dataISO ? new Date(v.dataISO).toLocaleDateString('pt-BR') : ""),
+                        turno: (v.turno || "MANHÃ").toUpperCase(),
+                        motivos: (v.motivos || "VISITA PERIÓDICA").toUpperCase(),
+                        relato: (v.relato || "").toUpperCase(),
                         pa: v.pa || "",
                         hgt: v.hgt || "",
-                        pendencia: v.pendencia ? v.pendencia.toUpperCase() : "",
-                        resolvida: !!v.resolvida,
-                        relatoResolvido: v.relatoResolvido || "",
+                        pendencia: (v.pendencia || "").toUpperCase(),
+                        resolvida: v.resolvida === true || v.resolvida === 1,
+                        relatoResolvido: (v.relatoResolvido || "").toUpperCase(),
                         dataResolvido: v.dataResolvido || ""
                     };
-                    promises.push(DB.put("visitas", mappedV));
-                });
+                    await DB.put("visitas", mappedV);
+                }
 
-                await Promise.all(promises);
-                alert("SUCESSO! " + promises.length + " REGISTROS IMPORTADOS E CONVERTIDOS.");
+                await Utils.CustomModals.alert("RESTAURAÇÃO CONCLUÍDA!\nREGISTROS PROCESSADOS COM SUCESSO.");
                 location.reload();
+
             } catch (err) {
-                console.error(err);
-                alert("ERRO CRÍTICO NA RESTAURAÇÃO: Verifique o console.");
+                console.error("Erro na restauração:", err);
+                alert("FALHA AO PROCESSAR ARQUIVO: O formato dos dados não é compatível.");
             }
         };
         reader.readAsText(file);
     },
+
     async exportCSV() {
         const visitas = await DB.getAll("visitas");
-        // Cabeçalho com BOM para Excel reconhecer acentos
         let csv = "\ufeffDATA;NOME;MOTIVOS;RELATO;PA;HGT\n";
         visitas.forEach(v => {
             csv += `${v.dataBR};${v.nome};${v.motivos};${v.relato};${v.pa || ''};${v.hgt || ''}\n`;

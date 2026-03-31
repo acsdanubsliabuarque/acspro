@@ -1,63 +1,70 @@
 // 001: MODULO DE REGISTRO DE VISITAS DOMICILIARES E GESTAO DE PENDENCIAS
 // 002: FOCO EM SINAIS VITAIS, HISTORICO ATIVO E ARQUIVO MORTO DE PENDENCIAS (PROTOCOLO OSASCO)
+// 003: ESTE ARQUIVO GERENCIA A PRODUTIVIDADE DIARIA E O FLUXO DE SAUDE DO CIDADAO
 const Visits = {
 
-    // 003: INICIALIZA O FORMULARIO DE VISITA PARA UM PACIENTE ESPECIFICO
+    // 004: INICIALIZA O FORMULARIO DE VISITA PARA UM PACIENTE ESPECIFICO
     async start(id) {
+        // 005: RECUPERA O PACIENTE DO BANCO PARA VALIDAR EXISTENCIA
         const p = await DB.get("municipes", id);
-        if (!p) return Utils.CustomModals.alert("ERRO: PACIENTE NÃO LOCALIZADO.");
+        if (!p) return Utils.CustomModals.alert("ERRO CRITICO: PACIENTE NÃO LOCALIZADO NA BASE.");
 
+        // 006: DEFINE O PACIENTE ATIVO E O TIMESTAMP DE INICIO (PARA LOGS FUTUROS)
         AppState.activePatient = p;
         AppState.visitStartTime = new Date();
 
-        // 004: PREENCHIMENTO AUTOMATICO DOS DADOS NO FORMULARIO
+        // 007: ATUALIZA A INTERFACE COM NOME E IDADE (CALCULO ONIPRESENTE)
         document.getElementById('v-nome-label').innerText = `VISITA: ${p.nome} (${Utils.calculateAge(p.nasc)} ANOS)`;
         document.getElementById('v-data').value = new Date().toLocaleDateString('pt-BR');
         
-        // 005: LIMPEZA DE CAMPOS DE VISITA ANTERIOR
+        // 008: RESET DE CAMPOS PARA GARANTIR LIMPEZA ENTRE VISITAS DIFERENTES
         document.getElementById('v-relato').value = "";
         document.getElementById('v-pendencia').value = "";
         document.getElementById('v-pa').value = "";
         document.getElementById('v-hgt').value = "";
         
-        // 006: DESMARCAR TODOS OS MOTIVOS DA VISITA ANTERIOR
+        // 009: DESMARCAR TODOS OS CHECKBOXES DE MOTIVOS OFICIAIS DO SISAB
         document.querySelectorAll('input[name="v-motivo"]').forEach(cb => cb.checked = false);
 
-        // 007: LOGICA DE NAVEGACAO FAMILIAR DENTRO DA VISITA
-        // 008: SE O PACIENTE FOR CHEFE, MOSTRA OS DEPENDENTES PARA VISITA EM SEQUENCIA
-        const famArea = document.getElementById('v-familiares-area'); // 009: Area que deve existir no HTML em visitas
+        // 010: MOTOR DE NAVEGACAO FAMILIAR DENTRO DA VISITA (PARA AGILIDADE EM CAMPO)
+        // 011: SE O PACIENTE FOR CHEFE, LISTA DEPENDENTES PARA VISITA EM SEQUENCIA SEM SAIR DA TELA
+        const famArea = document.getElementById('v-familiares-area'); 
         if (famArea) {
             famArea.innerHTML = "";
             if (p.isResp === 'SIM') {
                 const familiares = await DB.getByIndex("municipes", "respId", p.id);
                 if (familiares.length > 0) {
-                    famArea.innerHTML = "<h4>NÚCLEO FAMILIAR (DEPENDENTES):</h4>";
+                    famArea.innerHTML = `<label style="background:#eee; padding:5px; margin-top:10px;">NÚCLEO FAMILIAR NO ENDEREÇO:</label>`;
                     familiares.forEach(f => {
                         famArea.innerHTML += `
-                            <div class="card-familiar" style="padding:10px; background:#f0f0f0; margin-bottom:5px; border-radius:8px;">
-                                ${f.nome} (${f.relacao})
-                                <button class="btn btn-xs btn-outline" onclick="Visits.start(${f.id})">VISITAR ESTE</button>
-                            </div>`;
+                            <div class="card-familiar" style="padding:10px; background:#f9f9f9; border:1px solid #ddd; margin-bottom:5px; border-radius:8px;">
+                                <div style="font-size:12px; font-weight:bold;">${f.nome}</div>
+                                <div style="font-size:10px; color:#666;">PARENTESCO: ${f.relacao}</div>
+                                <button class="btn-xs btn-main" style="margin-top:5px;" onclick="Visits.start(${f.id})">VISITAR AGORA</button>
+                            </div> `;
                     });
                 }
             }
         }
 
+        // 012: DIRECIONA PARA A TELA DE VISITA E ROLA AO TOPO
         Nav.goTo('tela-visita');
     },
 
-    // 010: PERSISTENCIAS DOS DADOS DA VISITA NO BANCO DE DADOS
+    // 013: PERSISTENCIAS DOS DADOS DA VISITA COM VALIDACAO DE CAMPOS OBRIGATORIOS
     async save() {
+        // 014: EXTRAÇÃO DOS VALORES DA INTERFACE
         const motivos = Array.from(document.querySelectorAll('input[name="v-motivo"]:checked')).map(i => i.value);
         const relato = document.getElementById('v-relato').value.toUpperCase().trim();
         const pendencia = document.getElementById('v-pendencia').value.toUpperCase().trim();
         const pa = document.getElementById('v-pa').value;
         const hgt = document.getElementById('v-hgt').value;
 
-        // 011: VALIDACOES MINIMAS PARA EVITAR REGISTROS VAZIOS (PADRAO SISAB)
-        if (motivos.length === 0) return Utils.CustomModals.alert("ERRO: VOCÊ DEVE SELECIONAR PELO MENOS UM MOTIVO DE VISITA.");
-        if (!relato) return Utils.CustomModals.alert("ERRO: O RELATO DA EVOLUÇÃO É OBRIGATÓRIO.");
+        // 015: BLOQUEIO DE SEGURANCA: OBRIGATORIO MOTIVO E RELATO DA EVOLUCAO
+        if (motivos.length === 0) return Utils.CustomModals.alert("ATENÇÃO: SELECIONE OS MOTIVOS DA VISITA (SISAB).");
+        if (!relato) return Utils.CustomModals.alert("ATENÇÃO: O RELATO DA EVOLUÇÃO É OBRIGATÓRIO.");
 
+        // 016: MONTAGEM DO OBJETO DE VISITA PARA O INDEXEDDB
         const visitaData = {
             pacienteId: AppState.activePatient.id,
             nome: AppState.activePatient.nome,
@@ -69,25 +76,27 @@ const Visits = {
             pa: pa,
             hgt: hgt,
             pendencia: pendencia,
-            resolvida: false, // 012: Pendencia inicia sempre como ativa se preenchida
+            resolvida: false, 
             dataResolvido: "",
             relatoResolvido: ""
         };
 
+        // 017: TENTATIVA DE GRAVAÇÃO COM TRATAMENTO DE ERROS DE CONCORRENCIA
         try {
             await DB.put("visitas", visitaData);
-            await Utils.CustomModals.alert("VISITA E EVOLUÇÃO REGISTRADAS COM SUCESSO!");
+            await Utils.CustomModals.alert("VISITA SALVA COM SUCESSO!");
             Nav.goTo('tela-home', true);
         } catch (err) {
-            Utils.CustomModals.alert("ERRO AO SALVAR VISITA: " + err.message);
+            Utils.CustomModals.alert("ERRO AO SALVAR REGISTRO: " + err.message);
         }
     },
 
-    // 013: RENDERIZACAO DO HISTORICO COMPLETO DO PACIENTE
+    // 018: RENDERIZACAO DO HISTORICO EM ORDEM CRONOLOGICA DECRESCENTE
     async viewHistory(id) {
         const p = await DB.get("municipes", id);
         const visitas = await DB.getByIndex("visitas", "pacienteId", id);
-        // 014: ORDENAR POR DATA MAIS RECENTE
+        
+        // 019: ORDENACAO: MAIS RECENTE PRIMEIRO
         visitas.sort((a, b) => b.dataTS - a.dataTS);
 
         const list = document.getElementById('lista-historico');
@@ -95,82 +104,83 @@ const Visits = {
         list.innerHTML = "";
 
         if (visitas.length === 0) {
-            list.innerHTML = "<p style='text-align:center;'>NENHUM REGISTRO DE VISITA ENCONTRADO.</p>";
+            list.innerHTML = "<p style='text-align:center;'>ESTE CIDADÃO AINDA NÃO POSSUI VISITAS REGISTRADAS.</p>";
         }
 
+        // 020: CONSTRUCAO DINAMICA DOS CARDS DE HISTORICO
         for (const v of visitas) {
             list.innerHTML += `
-                <div class="card" style="border-left-color: #6c757d; font-size: 13px;">
-                    <div style="display:flex; justify-content:space-between; font-weight:bold;">
+                <div class="card" style="border-left-color: #6c757d; font-size: 13px; margin-bottom:10px;">
+                    <div style="display:flex; justify-content:space-between; font-weight:bold; color:var(--primary);">
                         <span>📅 ${v.dataBR} (${v.turno})</span>
-                        <span style="color:var(--primary)">${v.pa ? 'PA: '+v.pa : ''} ${v.hgt ? '| HGT: '+v.hgt : ''}</span>
+                        <span>${v.pa ? 'PA: '+v.pa : ''} ${v.hgt ? '| HGT: '+v.hgt : ''}</span>
                     </div>
-                    <div style="margin:5px 0;"><strong>MOTIVOS:</strong> ${v.motivos}</div>
-                    <div style="background:#f9f9f9; padding:8px; border-radius:5px; border:1px solid #eee;">
-                        <strong>RELATO:</strong> "${v.relato}"
+                    <div style="margin:8px 0; font-size:11px;"><strong>MOTIVOS:</strong> ${v.motivos}</div>
+                    <div style="background:#f1f3f5; padding:10px; border-radius:8px; border-left:3px solid #ccc;">
+                        <strong>EVOLUÇÃO:</strong> "${v.relato}"
                     </div>
                     ${v.pendencia ? `
-                        <div class="pendencia-ativa-no-card" style="background:${v.resolvida ? '#e8f5e9' : '#fff8e1'}; border-color:${v.resolvida ? '#81c784' : '#ffe082'};">
-                            <div>
+                        <div class="pendencia-ativa-no-card" style="background:${v.resolvida ? '#e8f5e9' : '#fff8e1'};">
+                            <div style="flex:1;">
                                 <b style="color:${v.resolvida ? '#218838' : '#795548'}">
-                                    ${v.resolvida ? '✅ RESOLVIDO' : '⚠️ PENDENTE'}: ${v.pendencia}
+                                    ${v.resolvida ? '✅ RESOLVIDA' : '⚠️ PENDENTE'}: ${v.pendencia}
                                 </b>
-                                ${v.resolvida ? `<br><small>SOLUÇÃO: ${v.relatoResolvido} (${v.dataResolvido})</small>` : ''}
+                                ${v.resolvida ? `<br><small style="color:#666">SOLUÇÃO: ${v.relatoResolvido} EM ${v.dataResolvido}</small>` : ''}
                             </div>
-                        </div>
-                    ` : ''}
-                </div>`;
+                            ${v.resolvida ? '' : `<button class="btn-icon" onclick="Visits.resolvePendency(${v.id})">✅</button>`}
+                        </div> ` : ''}
+                </div> `;
         }
         Nav.goTo('tela-historico');
     },
 
-    // 015: VISUALIZACAO DE TODAS AS PENDENCIAS ATIVAS NO TERRITORIO
+    // 021: GERENCIAMENTO DE PENDENCIAS DO TERRITORIO
     async viewPendencies() {
-        const todasVisitas = await DB.getAll("visitas");
-        const ativas = todasVisitas.filter(v => v.pendencia && !v.resolvida);
+        const todas = await DB.getAll("visitas");
+        const ativas = todas.filter(v => v.pendencia && !v.resolvida);
         
         const list = document.getElementById('lista-resultados');
-        list.innerHTML = `<h3 style="text-align:center">PENDÊNCIAS ATIVAS NO TERRITÓRIO (${ativas.length})</h3>`;
+        list.innerHTML = `<h3 style="text-align:center">CONTROLE DE PENDÊNCIAS (${ativas.length})</h3>`;
 
         if (ativas.length === 0) {
-            list.innerHTML += "<p style='text-align:center'>TUDO EM DIA NO SEU SETOR!</p>";
+            list.innerHTML += "<p style='text-align:center; padding:20px;'>PARABÉNS! NENHUMA PENDÊNCIA ATIVA NO MOMENTO.</p>";
         } else {
             for (const v of ativas) {
                 list.innerHTML += `
                     <div class="card" style="border-left-color: var(--warning)">
-                        <div class="info-label">CIDADÃO</div>
+                        <div class="info-label">CIDADÃO / ENDEREÇO</div>
                         <div class="info-valor"><strong>${v.nome}</strong></div>
                         <div class="pendencia-ativa-no-card">
-                            <span>${v.pendencia}</span>
-                            <div>
-                                <button class="btn-icon" title="EDITAR" onclick="Visits.editPendency(${v.id})">✏️</button>
-                                <button class="btn-icon" title="RESOLVER" onclick="Visits.resolvePendency(${v.id})">✅</button>
+                            <span style="font-weight:bold;">${v.pendencia}</span>
+                            <div style="display:flex; gap:5px;">
+                                <button class="btn-icon" title="EDITAR TEXTO" onclick="Visits.editPendency(${v.id})">✏️</button>
+                                <button class="btn-icon" title="MARCAR COMO FEITO" onclick="Visits.resolvePendency(${v.id})">✅</button>
                             </div>
                         </div>
-                        <div style="font-size:10px; margin-top:5px; opacity:0.6">GERADA EM: ${v.dataBR}</div>
-                    </div>`;
+                        <div style="font-size:10px; margin-top:8px; color:#888;">GERADA NA VISITA DE: ${v.dataBR}</div>
+                    </div> `;
             }
         }
         Nav.goTo('tela-resultados');
     },
 
-    // 016: FUNCAO PARA RESOLVER PENDENCIA E ARQUIVAR (LOGICA SOLICITADA)
+    // 022: RESOLUCAO E ARQUIVAMENTO DE PENDENCIA (PROTOCOLO ARQUIVO MORTO)
     async resolvePendency(id) {
         const v = await DB.get("visitas", id);
         if (!v) return;
 
-        const solucao = await Utils.CustomModals.prompt(`RESOLVENDO PENDÊNCIA PARA ${v.nome}:\nO QUE FOI FEITO PARA RESOLVER?`);
+        // 023: SOLICITA A DESCRICAO DO DESFECHO (OBLIGATORIO)
+        const solucao = await Utils.CustomModals.prompt(`RESOLUÇÃO PARA: ${v.nome}\nO QUE FOI FEITO PARA RESOLVER ESSA PENDÊNCIA?`);
         
         if (solucao && solucao.trim() !== "") {
-            // 017: ATUALIZA O ESTADO NA TABELA DE VISITAS
+            // 024: ATUALIZA NO STORE DE VISITAS
             v.resolvida = true;
             v.relatoResolvido = solucao.toUpperCase().trim();
             v.dataResolvido = new Date().toLocaleString('pt-BR');
-
             await DB.put("visitas", v);
 
-            // 018: MOVE PARA A TABELA DE ARQUIVO MORTO PARA GARANTIR PERFORMANCE
-            const arquivoData = {
+            // 025: CRIA O REGISTRO NO ARQUIVO MORTO PARA AUDITORIA FUTURA
+            const registroArquivo = {
                 visitaId: v.id,
                 pacienteId: v.pacienteId,
                 nome: v.nome,
@@ -179,27 +189,24 @@ const Visits = {
                 dataArquivamento: Date.now(),
                 dataArquivamentoBR: v.dataResolvido
             };
-
-            await DB.put("arquivo_pendencias", arquivoData);
-            await Utils.CustomModals.alert("PENDÊNCIA RESOLVIDA E ARQUIVADA!");
+            await DB.put("arquivo_pendencias", registroArquivo);
             
-            // 019: RECARREGA A TELA QUE O USUARIO ESTIVER (PENDENCIAS OU HISTORICO)
-            if (document.getElementById('tela-resultados').classList.contains('hidden') === false) {
-                this.viewPendencies();
-            } else {
-                this.viewHistory(v.pacienteId);
-            }
+            await Utils.CustomModals.alert("RESOLVIDO COM SUCESSO!");
+            
+            // 026: RECARREGA A TELA ATUAL PARA ATUALIZAR STATUS VISUAL
+            if (!document.getElementById('tela-resultados').classList.contains('hidden')) this.viewPendencies();
+            else this.viewHistory(v.pacienteId);
         } else {
-            Utils.CustomModals.alert("A DESCRIÇÃO DA SOLUÇÃO É OBRIGATÓRIA PARA FINALIZAR.");
+            Utils.CustomModals.alert("A JUSTIFICATIVA DE RESOLUÇÃO É NECESSÁRIA PARA ARQUIVAR.");
         }
     },
 
-    // 020: FUNCAO PARA EDITAR APENAS O TEXTO DA PENDENCIA (ICONE LAPIS)
+    // 027: FUNCAO PARA CORRECAO RAPIDA DE TEXTO DE PENDENCIA (ICONE LAPIS)
     async editPendency(id) {
         const v = await DB.get("visitas", id);
         if (!v) return;
 
-        const novoTexto = await Utils.CustomModals.prompt("EDITAR TEXTO DA PENDÊNCIA:", v.pendencia);
+        const novoTexto = await Utils.CustomModals.prompt("CORRIGIR TEXTO DA PENDÊNCIA:", v.pendencia);
         if (novoTexto && novoTexto.trim() !== "") {
             v.pendencia = novoTexto.toUpperCase().trim();
             await DB.put("visitas", v);
@@ -207,44 +214,28 @@ const Visits = {
         }
     },
 
-    // 021: FUNCAO PARA REVERTER PENDENCIA RESOLVIDA (MODO ARQUIVO MORTO)
-    // 022: EXIGE JUSTIFICATIVA QUE SERA ANEXADA AO RELATO DA VISITA
+    // 028: REVERSAO DE PENDENCIA (RETIRAR DO ARQUIVO MORTO)
     async revertPendency(arquivoId) {
         const arquivo = await DB.get("arquivo_pendencias", arquivoId);
         if (!arquivo) return;
 
-        const confirmacao = await Utils.CustomModals.confirm(`DESEJA REALMENTE REVERTER A PENDÊNCIA DE ${arquivo.nome} PARA 'ATIVA'?`);
-        
-        if (confirmacao) {
-            const motivo = await Utils.CustomModals.prompt("MOTIVO DA REVERSÃO (OBRIGATÓRIO):");
-            if (!motivo) return Utils.CustomModals.alert("VOCÊ PRECISA JUSTIFICAR A REVERSÃO.");
+        const confirmar = await Utils.CustomModals.confirm(`REATIVAR PENDÊNCIA DE ${arquivo.nome}?\nELA VOLTARÁ PARA A LISTA DE ATIVAS.`);
+        if (confirmar) {
+            const justificativa = await Utils.CustomModals.prompt("POR QUE ESTÁ REABRINDO ESTA PENDÊNCIA?");
+            if (!justificativa) return Utils.CustomModals.alert("JUSTIFICATIVA OBRIGATÓRIA.");
 
-            // 023: BUSCA A VISITA ORIGINAL PARA RESETAR O STATUS
             const v = await DB.get("visitas", arquivo.visitaId);
             if (v) {
                 v.resolvida = false;
-                v.relato += `\n[REVERTIDO EM ${new Date().toLocaleString()} POR MOTIVO: ${motivo.toUpperCase()}]`;
+                v.relato += `\n[REATIVADO EM ${new Date().toLocaleString()}: ${justificativa.toUpperCase()}]`;
                 v.dataResolvido = "";
                 v.relatoResolvido = "";
                 
                 await DB.put("visitas", v);
                 await DB.delete("arquivo_pendencias", arquivoId);
-                
-                await Utils.CustomModals.alert("PENDÊNCIA REVERTIDA COM SUCESSO!");
-                location.reload(); // 024: Recarrega para limpar estados da UI
+                await Utils.CustomModals.alert("PENDÊNCIA REABERTA COM SUCESSO.");
+                location.reload(); 
             }
         }
     }
 };
-
-// 025: VINCULACAO DINAMICA DE MASCARA PARA PRESSAO ARTERIAL NA VISITA
-document.addEventListener('input', (e) => {
-    if (e.target.id === 'v-pa') {
-        e.target.value = Utils.masks.pa(e.target.value);
-    }
-});
-
-// 026: COMENTARIO DE ARQUITETO:
-// 027: A FUNCAO 'viewHistory' AGORA RENDERIZA AS PENDENCIAS DENTRO DO CARD DO HISTORICO.
-// 028: ISSO GARANTE QUE O ACS TENHA A LINHA DO TEMPO COMPLETA DE CADA CIDADÃO.
-// 029: AS MAIÚSCULAS SÃO FORÇADAS EM TODOS OS PROMPTS E INPUTS DE RELATO.

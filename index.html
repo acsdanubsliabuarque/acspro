@@ -7,168 +7,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ACS PRO V12.2 - OSASCO FIELD SYSTEM</title>
     
-    <!-- 003: ESTILIZACAO INTERNA PARA GARANTIR PADRONIZACAO VISUAL -->
-    <style>
-        /* 004: DEFINICAO DE VARIAVEIS DE CORES OFICIAIS */
-        :root {
-            --primary: #004a99; 
-            --secondary: #6c757d; 
-            --success: #218838;
-            --danger: #d32f2f; 
-            --warning: #ffc107; 
-            --bg: #f4f6f9;
-            --gestante-pink: #e83e8c;
-            --text-dark: #333;
-            --white: #ffffff;
-        }
-
-        /* 005: RESET E CONFIGURACAO BASICA DE CORPO */
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            margin: 0; 
-            background: var(--bg); 
-            color: var(--text-dark); 
-            -webkit-font-smoothing: antialiased; 
-        }
-
-        /* 006: CABECALHO FIXO COM INDICADOR DE POPULACAO */
-        header { 
-            background: var(--primary); 
-            color: var(--white); 
-            padding: 15px; 
-            text-align: center; 
-            position: sticky; 
-            top: 0; 
-            z-index: 1000; 
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3); 
-        }
-
-        /* 007: CONTAINER PRINCIPAL - LIMITADO PARA MELHOR LEITURA EM MOBILE */
-        .container { 
-            padding: 15px; 
-            max-width: 700px; 
-            margin: auto; 
-            padding-bottom: 120px; 
-        }
-
-        /* 008: ESTILO DOS CARDS DE CIDADAOS (MODO FULL) */
-        .card { 
-            background: var(--white); 
-            border-radius: 12px; 
-            padding: 20px; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-            margin-bottom: 15px; 
-            border-left: 8px solid var(--primary); 
-            position: relative;
-        }
-
-        /* 009: ESTILOS ESPECIFICOS DE BORDAS DE CARDS */
-        .card-gestante { border-left-color: var(--gestante-pink) !important; }
-        .card-idoso { border-left-color: #673ab7 !important; }
-
-        /* 010: BARRA DE GESTACAO (AGORA ACIMA DAS BADGES CONFORME SOLICITADO) */
-        .gestante-badge-info { 
-            background: #fce4ec; 
-            color: #c2185b; 
-            padding: 12px; 
-            border-radius: 8px; 
-            font-size: 13px; 
-            margin: 10px 0; 
-            border: 1px solid #f8bbd0; 
-            font-weight: bold; 
-        }
-
-        /* 011: BARRA DE PENDENCIAS COM BOTOES DE ACAO RAPIDA */
-        .pendencia-ativa-no-card { 
-            background: #fff8e1; 
-            border: 1px solid #ffe082; 
-            padding: 12px; 
-            border-radius: 8px; 
-            margin-top: 10px; 
-            font-size: 13px; 
-            color: #795548; 
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        /* 012: BOTOES DE INTERFACE */
-        .btn { 
-            padding: 15px; 
-            border: none; 
-            border-radius: 8px; 
-            font-size: 15px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            width: 100%; 
-            margin: 5px 0; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            text-transform: uppercase;
-        }
-        .btn-main { background: var(--primary); color: white; }
-        .btn-outline { background: white; border: 2px solid var(--primary); color: var(--primary); }
-        .btn-save { background: var(--success); color: white; position: sticky; bottom: 80px; z-index: 99; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-        .btn-danger { background: var(--danger); color: white; }
-        .btn-sm { padding: 8px 12px; font-size: 12px; width: auto; margin: 0 2px; }
-        .btn-icon { background: none; border: 1px solid #ddd; padding: 5px; cursor: pointer; border-radius: 4px; }
-
-        /* 013: ELEMENTOS DE FORMULARIO - TUDO EM MAIUSCULO */
-        label { display: block; margin-top: 15px; font-weight: bold; font-size: 12px; color: #555; text-transform: uppercase; }
-        input, select, textarea { 
-            width: 100%; 
-            padding: 12px; 
-            margin-top: 5px; 
-            border: 1px solid #ccc; 
-            border-radius: 6px; 
-            box-sizing: border-box; 
-            font-size: 16px; 
-            background: white; 
-            text-transform: uppercase;
-        }
-
-        /* 014: CLASSES DE UTILIDADE */
-        .hidden { display: none !important; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-        
-        /* 015: MODAL DE CONFLITO DE ENDERECO */
-        .modal-divergencia {
-            position: fixed; top:0; left:0; width:100%; height:100%;
-            background: rgba(0,0,0,0.8); z-index: 2000;
-            display: flex; align-items: center; justify-content: center;
-        }
-
-        /* 016: BADGES DE AGRAVOS DE SAUDE */
-        .badge { 
-            padding: 5px 10px; border-radius: 4px; font-size: 10px; color: white; 
-            margin: 2px; font-weight: bold; display: inline-block; 
-        }
-        .bg-hiper { background: #d32f2f; }
-        .bg-dia { background: #455a64; }
-        .bg-gest { background: var(--gestante-pink); }
-        .bg-saudemental { background: #ff5722; }
-        .bg-idoso { background: #673ab7; }
-
-        /* 017: RODAPE DE NAVEGACAO */
-        .footer-nav { 
-            position: fixed; bottom: 0; left: 0; right: 0; 
-            background: white; display: flex; border-top: 1px solid #ddd; 
-            padding: 10px 5px; z-index: 1001; 
-        }
-        .nav-item { flex: 1; text-align: center; font-size: 11px; color: #777; cursor: pointer; font-weight: bold; }
-        .nav-item.active { color: var(--primary); }
-
-        /* 018: ESTILOS PARA OS DIFERENTES MODOS DE VISUALIZACAO (VIEWS) */
-        .view-compact { padding: 10px; font-size: 13px; border-bottom: 1px solid #eee; background: white; margin-bottom: 5px; border-radius: 8px;}
-        .view-list { display: flex; justify-content: space-between; padding: 10px; background: white; border-bottom: 1px solid #ddd; font-size: 12px; }
-
-    </style>
+    <!-- 003: REFERENCIA AO ARQUIVO DE ESTILOS EXTERNO (SOLICITACAO DE MODULARIZACAO) -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- 019: AREA DO CABECALHO -->
+<!-- 004: AREA DO CABECALHO FIXO -->
 <header>
     <h2 style="margin:0; font-size: 18px;">ACS PRO V12.2 - OSASCO</h2>
     <div id="contagem" style="font-size: 11px; font-weight: normal;">INICIALIZANDO BASE DE DADOS...</div>
@@ -176,7 +20,7 @@
 
 <div class="container">
 
-    <!-- 020: TELA HOME - PESQUISA E ACESSOS RAPIDOS -->
+    <!-- 005: TELA HOME - PESQUISA E ACESSOS RAPIDOS -->
     <div id="tela-home">
         <div class="card" style="border-left-color: var(--secondary)">
             <h3>BUSCA GERAL</h3>
@@ -198,10 +42,10 @@
 
         <div class="grid-2">
             <button class="btn btn-outline" onclick="Visits.viewPendencies()">PENDÊNCIAS</button>
-            <button class="btn btn-outline" onclick="Nav.goTo('tela-arquivo-pendencia')">ARQUIVO MORTA</button>
+            <button class="btn btn-outline" onclick="Nav.goTo('tela-arquivo-pendencia')">ARQUIVO MORTO</button>
         </div>
 
-        <!-- 021: AREA DE BACKUP E EXPORTACAO -->
+        <!-- 006: AREA DE BACKUP E EXPORTACAO -->
         <div class="card" style="background:#eee; border-left:none; text-align:center;">
             <h4 style="margin-top:0">GESTÃO DE DADOS (OSASCO)</h4>
             <div class="grid-2">
@@ -212,7 +56,7 @@
         </div>
     </div>
 
-    <!-- 022: TELA DE RESULTADOS COM SELETOR DE MODOS DE VISUALIZACAO (ITEM SOLICITADO) -->
+    <!-- 007: TELA DE RESULTADOS COM SELETOR DE MODOS DE VISUALIZACAO -->
     <div id="tela-resultados" class="hidden">
         <div style="display: flex; gap: 5px; margin-bottom: 15px;">
             <button class="btn btn-sm btn-outline" onclick="UI.changeView('full')">MODO COMPLETO</button>
@@ -223,7 +67,7 @@
         <button class="btn btn-outline" onclick="Nav.goBack()">VOLTAR AO INÍCIO</button>
     </div>
 
-    <!-- 023: TELA DE CADASTRO INDIVIDUAL (MULTIPLAS ETAPAS) -->
+    <!-- 008: TELA DE CADASTRO INDIVIDUAL (MULTIPLAS ETAPAS) -->
     <div id="tela-cadastro" class="hidden">
         <!-- BOTAO DE SALVAR FIXO PARA FLUIDEZ SOLICITADA -->
         <button class="btn btn-save" onclick="Registry.save()">CONCLUIR E GRAVAR TUDO</button>
@@ -314,7 +158,7 @@
         </div>
     </div>
 
-    <!-- 024: TELA DE REGISTRO DE VISITA DOMICILIAR -->
+    <!-- 009: TELA DE REGISTRO DE VISITA DOMICILIAR -->
     <div id="tela-visita" class="hidden">
         <div class="card">
             <h3 id="v-nome-label">VISITA: NOME</h3>
@@ -351,14 +195,14 @@
         <button class="btn btn-outline" onclick="Nav.confirmExit('tela-home')">CANCELAR</button>
     </div>
 
-    <!-- 025: TELA DE HISTORICO -->
+    <!-- 010: TELA DE HISTORICO -->
     <div id="tela-historico" class="hidden">
         <h3 id="hist-nome">HISTÓRICO</h3>
         <div id="lista-historico"></div>
         <button class="btn btn-outline" onclick="Nav.goBack()">VOLTAR</button>
     </div>
 
-    <!-- 026: TELA DE ARQUIVO MORTO DE PENDENCIAS -->
+    <!-- 011: TELA DE ARQUIVO MORTO DE PENDENCIAS -->
     <div id="tela-arquivo-pendencia" class="hidden">
         <h3>ARQUIVO DE PENDÊNCIAS RESOLVIDAS</h3>
         <div id="lista-pendencias-arquivo"></div>
@@ -367,14 +211,14 @@
 
 </div>
 
-<!-- 027: BARRA DE NAVEGACAO INFERIOR FIXED -->
+<!-- 012: BARRA DE NAVEGACAO INFERIOR FIXA -->
 <nav class="footer-nav">
     <div class="nav-item" onclick="Nav.goTo('tela-home', true)">INÍCIO</div>
     <div class="nav-item" onclick="Visits.viewPendencies()">PENDÊNCIAS</div>
     <div class="nav-item" onclick="Nav.confirmExit('voltar')">VOLTAR</div>
 </nav>
 
-<!-- 028: IMPORTACAO DOS MODULOS DE LOGICA (A SEREM REESCRITOS NAS PROXIMAS ETAPAS) -->
+<!-- 013: IMPORTACAO DOS SCRIPTS DE LOGICA EM ORDEM DE DEPENDENCIA -->
 <script src="database.js"></script>
 <script src="utils.js"></script>
 <script src="registry.js"></script>

@@ -1,232 +1,106 @@
-/* 001: MOTOR DE ESTADO E NAVEGACAO GLOBAL */
-window.AppState = {
-    activePatient: null,
-    visitStartTime: null,
-    history: ['tela-home'],
-    unsavedChanges: false,
-    currentViewMode: 'full',
-    
-    markUnsaved() { this.unsavedChanges = true; },
-    resetUnsaved() { this.unsavedChanges = false; },
-    resetPatient() { this.activePatient = null; this.visitStartTime = null; }
-};
-
-/* 002: MOTOR DE ROTAS E DIRECIONAMENTO (NAV) */
-window.Nav = {
-    init() {
-        // 003: POPULA SELECTS DE LOGRADOURO
-        const selects = document.querySelectorAll('.select-ruas');
-        const opts = `<option value="">ESCOLHA O LOGRADOURO...</option>` + 
-                     CONFIG_DB.RUAS.map(r => `<option value="${r}">${r}</option>`).join('');
-        selects.forEach(s => s.innerHTML = opts);
-
-        // 004: MOTOR GLOBAL DE MAIUSCULAS E MASCARAS
-        document.addEventListener('input', (e) => {
-            const el = e.target;
-            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-                el.value = el.value.toUpperCase(); // 005: FORCA TUDO EM MAIUCULO
-            }
-            // 006: APLICA MASCARAS DINAMICAS DO UTILS.JS
-            if (['c-nasc', 'c-dum'].includes(el.id)) el.value = Utils.masks.date(el.value);
-            if (el.id === 'c-cpf') el.value = Utils.masks.cpf(el.value);
-            if (el.id === 'c-tel') el.value = Utils.masks.phone(el.value);
-        });
-    },
-
-    goTo(id, reset = false) {
-        if (reset) this.history = ['tela-home'];
-        else if (this.history[this.history.length - 1] !== id) this.history.push(id);
-        
-        document.querySelectorAll('.container > div').forEach(d => d.classList.add('hidden'));
-        const target = document.getElementById(id);
-        if (target) {
-            target.classList.remove('hidden');
-            window.scrollTo(0, 0);
-        } else {
-            console.error("FALHA AO ENCONTRAR TELA:", id);
-        }
-    },
-
-    goBack() {
-        if (this.history.length > 1) {
-            this.history.pop();
-            const prev = this.history[this.history.length - 1];
-            this.goTo(prev);
-            this.history.pop(); 
-        } else {
-            this.goTo('tela-home', true);
-        }
-    },
-
-    async confirmExit(dest) {
-        if (AppState.unsavedChanges) {
-            const r = await Utils.CustomModals.confirm("DADOS NÃO SALVOS SERÃO PERDIDOS! DESEJA REALMENTE SAIR?");
-            if (!r) return;
-        }
-        AppState.resetUnsaved();
-        if (dest === 'voltar') this.goBack();
-        else this.goTo(dest, true);
-    }
-};
-
-/* 007: MOTOR DE INTERFACE (UI) PARA CONSTRUIR OS CARDS */
-window.UI = {
-    changeView(mode) {
-        AppState.currentViewMode = mode;
-        const last = document.getElementById('lista-resultados').getAttribute('data-last-search');
-        if (last) this.searchPessoa(true);
-    },
-
-    async buildCardFull(p) {
-        const s = Utils.sanitize;
-        const idade = Utils.calculateAge(p.nasc);
-        const gest = p.gest ? Utils.getGestationalInfo(p.dum) : null;
-        const pends = (await DB.getByIndex("visitas", "pacienteId", p.id)).filter(v => v.pendencia && !v.resolvida);
-
-        let badges = "";
-        const agravos = [
-            {k:'hiper', l:'HIPERTENSÃO', c:'bg-hiper'}, {k:'diab', l:'DIABETES', c:'bg-dia'},
-            {k:'gest', l:'GESTANTE', c:'bg-gest'}, {k:'saudeMental', l:'S. MENTAL', c:'bg-saudemental'},
-            {k:'idoso', l:'IDOSO (60+)', c:'bg-idoso'}, {k:'acamado', l:'ACAMADO', c:'bg-acam'}
-        ];
-        agravos.forEach(i => { if(p[i.k]) badges += `<span class="badge ${i.c}">${i.l}</span>`; });
-
-        return `
-            <div class="card ${p.gest ? 'card-gestante' : ''} ${p.idoso ? 'card-idoso' : ''}">
-                <div class="info-label">CIDADÃO</div>
-                <div class="info-valor" style="font-size:18px;"><strong>${s(p.nome)}</strong></div>
-                <div class="grid-2">
-                    <div><div class="info-label">NASCIMENTO</div><div class="info-valor">${s(p.nasc)} (${idade} ANOS)</div></div>
-                    <div><div class="info-label">RAÇA/COR</div><div class="info-valor">${s(p.raca)}</div></div>
-                </div>
-                <div class="info-label">ENDEREÇO</div>
-                <div class="info-valor">${s(p.rua)}, ${s(p.num)} | ${s(p.comp)}</div>
-                ${gest ? `<div class="gestante-badge-info">IG: ${gest.res} <br> DPP: ${gest.dpp} | ${gest.tri}</div>` : ''}
-                <div style="margin: 10px 0;">${badges || '<small>SEM AGRAVOS</small>'}</div>
-                ${pends.length > 0 ? `
-                    <div class="pendencia-ativa-no-card">
-                        <span>⚠️ PENDENTE: ${s(pends[0].pendencia)}</span>
-                        <div style="display:flex; gap:5px;">
-                            <button class="btn-icon" onclick="Visits.editPendency(${pends[0].id})">✏️</button>
-                            <button class="btn-icon" onclick="Visits.resolvePendency(${pends[0].id})">✅</button>
-                        </div>
-                    </div>` : '' }
-                <hr style="opacity:0.1; margin:15px 0;">
-                <button class="btn btn-main" onclick="Visits.start(${p.id})">REGISTRAR VISITA</button>
-                <div class="grid-2">
-                    <button class="btn btn-outline btn-sm" onclick="Visits.viewHistory(${p.id})">HISTÓRICO</button>
-                    <button class="btn btn-outline btn-sm" onclick="Registry.prepareEdit(${p.id})">EDITAR</button>
-                </div>
-            </div>`;
-    },
-
-    async buildCardCompact(p) {
-        const s = Utils.sanitize;
-        const idade = Utils.calculateAge(p.nasc);
-        return `
-            <div class="view-compact" onclick="Visits.start(${p.id})">
-                <div style="font-weight:bold; color:var(--primary);">${s(p.nome)} (${idade} ANOS)</div>
-                <div style="font-size:11px;">${s(p.rua)}, ${s(p.num)} - ${s(p.comp)}</div>
-                <div style="margin-top:4px; font-size:10px;">
-                    ${p.hiper ? '🔴HIPER ' : ''} ${p.diab ? '🔵DIAB ' : ''} ${p.gest ? '💗GEST ' : ''} ${p.idoso ? '🟣IDOSO ' : ''}
-                </div>
-            </div>`;
-    },
-
-    async buildRowList(p) {
-        const s = Utils.sanitize;
-        const idade = Utils.calculateAge(p.nasc);
-        return `
-            <div class="view-list" onclick="Registry.prepareEdit(${p.id})">
-                <div style="flex:3;"><strong>${s(p.nome)}</strong><br><small>${idade} ANOS</small></div>
-                <div style="flex:2; font-size:10px; color:#666;">${s(p.rua)}, ${p.num}</div>
-                <div style="flex:1; text-align:right;">${p.gest ? '🤰' : ''} ${p.hiper || p.diab ? '💊' : ''}</div>
-            </div>`;
-    },
-
-    async searchPessoa(refresh = false) {
-        const term = document.getElementById('h-nome').value.toUpperCase().trim();
-        if (!term && !refresh) return Utils.CustomModals.alert("DIGITE UM NOME OU PARTE DELE.");
-        
-        const all = await DB.getAll("municipes");
-        const res = all.filter(p => p.nome.includes(term));
-        
-        await this.renderList(`PESQUISA: ${term}`, res);
-        document.getElementById('lista-resultados').setAttribute('data-last-search', term);
-    },
-
-    async searchEndereco() {
-        const rua = document.getElementById('h-rua').value;
-        const num = document.getElementById('h-num').value.trim();
-        if (!rua) return Utils.CustomModals.alert("ESCOLHA A RUA.");
-        
-        const todos = await DB.getByIndex("municipes", "rua", rua);
-        const filtrado = todos.filter(p => !num || p.num === num);
-        
-        await this.renderList(`LISTA: ${rua}`, filtrado);
-    },
-
-    async renderList(title, arr) {
-        const container = document.getElementById('lista-resultados');
-        container.innerHTML = `<h3>${title} (${arr.length})</h3>`;
-        
-        if (arr.length === 0) {
-            container.innerHTML += "<p style='text-align:center; padding:20px; opacity:0.5;'>NENHUM REGISTRO ENCONTRADO.</p>";
-        } else {
-            for (const p of arr) {
-                if (AppState.currentViewMode === 'full') container.innerHTML += await this.buildCardFull(p);
-                else if (AppState.currentViewMode === 'compact') container.innerHTML += await this.buildCardCompact(p);
-                else if (AppState.currentViewMode === 'list') container.innerHTML += await this.buildRowList(p);
-            }
-        }
-        Nav.goTo('tela-resultados');
-    }
-};
-
-/* 008: MOTOR DE BACKUP (JSON) */
-window.Backup = {
-    async createBackup() {
-        const m = await DB.getAll("municipes");
-        const v = await DB.getAll("visitas");
-        const a = await DB.getAll("arquivo_pendencias");
-        const b = { municipes: m, visitas: v, arquivo_pendencias: a, version: "V12.2_OSASCO" };
-        const blob = new Blob([JSON.stringify(b)], {type: 'application/json'});
-        const lnk = document.createElement('a'); lnk.href = URL.createObjectURL(blob); lnk.download = `BACKUP_ACS_${Date.now()}.json`; lnk.click();
-    },
-
-    async restoreBackup(event) {
-        const f = event.target.files[0]; if (!f) return;
-        const rd = new FileReader();
-        rd.onload = async (e) => {
-            try {
-                const d = JSON.parse(e.target.result);
-                const ms = d.municipes || d.m || [];
-                const vs = d.visitas || d.v || [];
-                for (let p of ms) await DB.put("municipes", p);
-                for (let vt of vs) await DB.put("visitas", vt);
-                alert("RESTAURADO COM SUCESSO!");
-                location.reload();
-            } catch (err) { alert("ERRO: ARQUIVO INVÁLIDO."); }
-        };
-        rd.readAsText(f);
-    },
-
-    async exportCSV() {
-        const vs = await DB.getAll("visitas");
-        let csv = "\ufeffDATA;NOME;MOTIVOS;RELATO;PA\n";
-        vs.forEach(v => { csv += `${v.dataBR};${v.nome};${v.motivos};${v.relato};${v.pa || ''}\n`; });
-        const bl = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
-        const l = document.createElement('a'); l.href = URL.createObjectURL(bl); l.download = `RELATORIO_VISITAS.csv`; l.click();
-    }
-};
-
-/* 009: INICIALIZAÇÃO FINAL DO SISTEMA */
-document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        await DB.init();
-        Nav.init();
-        console.log("ACS PRO OSASCO 12.2 - PRONTO PARA USO.");
-    } catch (e) {
-        console.error("FALHA NA CARGA DO SISTEMA:", e);
-    }
-});
+// 001: ////////////////////////////////////////////////////////////////////////////////
+// 002: // ARQUIVO: APP.JS - MAESTRO DE NAVEGACAO E INTERFACE                        //
+// 003: ////////////////////////////////////////////////////////////////////////////////
+// 004: 
+// 005: window.AppState = {
+// 006:     activePatient: null, history: ['tela-home'], unsavedChanges: false, currentViewMode: 'full',
+// 007:     markUnsaved() { this.unsavedChanges = true; },
+// 008:     resetUnsaved() { this.unsavedChanges = false; },
+// 009:     resetPatient() { this.activePatient = null; }
+// 010: };
+// 011: 
+// 012: window.Nav = {
+// 013:     init() {
+// 014:         const selects = document.querySelectorAll('.select-ruas');
+// 015:         const opts = `<option value="">ESCOLHA O LOGRADOURO...</option>` + window.CONFIG_DB.RUAS.map(r => `<option value="${r}">${r}</option>`).join('');
+// 016:         selects.forEach(s => s.innerHTML = opts);
+// 017:         document.addEventListener('input', (e) => {
+// 018:             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') e.target.value = e.target.value.toUpperCase();
+// 019:             if (['c-nasc', 'c-dum'].includes(e.target.id)) e.target.value = window.Utils.masks.date(e.target.value);
+// 020:             if (e.target.id === 'c-cpf') e.target.value = window.Utils.masks.cpf(e.target.value);
+// 021:             if (e.target.id === 'c-tel') e.target.value = window.Utils.masks.phone(e.target.value);
+// 022:             if (e.target.id === 'v-pa') e.target.value = window.Utils.masks.pa(e.target.value);
+// 023:         });
+// 024:     },
+// 025:     goTo(id, reset = false) {
+// 026:         if (reset) this.history = ['tela-home'];
+// 027:         else if (this.history[this.history.length - 1] !== id) this.history.push(id);
+// 028:         document.querySelectorAll('.container > div').forEach(d => d.classList.add('hidden'));
+// 029:         const target = document.getElementById(id);
+// 030:         if (target) target.classList.remove('hidden');
+// 031:         window.scrollTo(0, 0);
+// 032:     },
+// 033:     goBack() {
+// 034:         if (this.history.length > 1) { this.history.pop(); this.goTo(this.history[this.history.length - 1]); this.history.pop(); }
+// 035:         else this.goTo('tela-home', true);
+// 036:     },
+// 037:     async confirmExit(dest) {
+// 038:         if (window.AppState.unsavedChanges && !await window.Utils.CustomModals.confirm("SAIR SEM SALVAR?")) return;
+// 039:         window.AppState.resetUnsaved();
+// 040:         if (dest === 'voltar') this.goBack(); else this.goTo(dest, true);
+// 041:     }
+// 042: };
+// 043: 
+// 044: window.UI = {
+// 045:     changeView(m) { window.AppState.currentViewMode = m; this.searchPessoa(true); },
+// 046:     async buildCardFull(p) {
+// 047:         const s = window.Utils.sanitize; const idade = window.Utils.calculateAge(p.nasc);
+// 048:         const gest = p.gest ? window.Utils.getGestationalInfo(p.dum) : null;
+// 049:         const pends = (await window.DB.getByIndex("visitas", "pacienteId", p.id)).filter(v => v.pendencia && !v.resolvida);
+// 050:         let ag = ""; [{k:'hiper', l:'HIPERTENSÃO', c:'bg-hiper'}, {k:'diab', l:'DIABETES', c:'bg-dia'}, {k:'gest', l:'GESTANTE', c:'bg-gest'}, {k:'saudeMental', l:'S. MENTAL', c:'bg-saudemental'}, {k:'idoso', l:'IDOSO', c:'bg-idoso'}].forEach(i => { if(p[i.k]) ag += `<span class="badge ${i.c}">${i.l}</span>`; });
+// 051:         return `<div class="card ${p.gest?'card-gestante':''}">${s(p.nome)} (${idade} ANOS)<br><small>${s(p.rua)}, ${p.num} - ${s(p.comp)}</small>${gest?`<div class="gestante-badge-info">IG: ${gest.res} <br> DPP: ${gest.dpp}</div>`:''}<div style="margin:8px 0">${ag}</div>${pends.length?`<div class="pendencia-ativa-no-card">⚠️ ${s(pends[0].pendencia)}</div>`:''}<hr><button class="btn btn-main" onclick="window.Visits.start(${p.id})">VISITAR</button><div class="grid-2"><button class="btn btn-outline btn-sm" onclick="window.Visits.viewHistory(${p.id})">HISTÓRICO</button><button class="btn btn-outline btn-sm" onclick="window.Registry.prepareEdit(${p.id})">EDITAR</button></div></div>`;
+// 052:     },
+// 053:     async searchPessoa(refresh = false) {
+// 054:         const term = document.getElementById('h-nome').value.toUpperCase().trim();
+// 055:         if (!term && !refresh) return;
+// 056:         const all = await window.DB.getAll("municipes");
+// 057:         const res = all.filter(p => p.nome.includes(term));
+// 058:         await this.renderList(`PESQUISA: ${term}`, res);
+// 059:     },
+// 060:     async searchEndereco() {
+// 061:         const r = document.getElementById('h-rua').value; const n = document.getElementById('h-num').value.trim();
+// 062:         if (!r) return;
+// 063:         const all = await window.DB.getByIndex("municipes", "rua", r);
+// 064:         const res = all.filter(p => !n || p.num === n);
+// 065:         await this.renderList(`LOGRADOURO: ${r}`, res);
+// 066:     },
+// 067:     async renderList(title, arr) {
+// 068:         const c = document.getElementById('lista-resultados');
+// 069:         c.innerHTML = `<h3>${title} (${arr.length})</h3>`;
+// 070:         if (arr.length === 0) c.innerHTML += "<p>NADA ENCONTRADO.</p>";
+// 071:         else for (const p of arr) c.innerHTML += await this.buildCardFull(p);
+// 072:         window.Nav.goTo('tela-resultados');
+// 073:     }
+// 074: };
+// 075: 
+// 076: window.Backup = {
+// 077:     async createBackup() {
+// 078:         const m = await window.DB.getAll("municipes"); const v = await window.DB.getAll("visitas"); const a = await window.DB.getAll("arquivo_pendencias");
+// 079:         const b = { municipes: m, visitas: v, arquivo_pendencias: a };
+// 080:         const blob = new Blob([JSON.stringify(b)], {type: 'application/json'});
+// 081:         const lnk = document.createElement('a'); lnk.href = URL.createObjectURL(blob); lnk.download = `BACKUP_OSASCO.json`; lnk.click();
+// 082:     },
+// 083:     async restoreBackup(ev) {
+// 084:         const f = ev.target.files[0]; if(!f) return;
+// 085:         const rd = new FileReader();
+// 086:         rd.onload = async (e) => {
+// 087:             const d = JSON.parse(e.target.result);
+// 088:             for(let p of (d.municipes || [])) await window.DB.put("municipes", p);
+// 089:             for(let v of (d.visitas || [])) await window.DB.put("visitas", v);
+// 090:             location.reload();
+// 091:         };
+// 092:         rd.readAsText(f);
+// 093:     },
+// 094:     async exportCSV() {
+// 095:         const vs = await window.DB.getAll("visitas");
+// 096:         let csv = "\ufeffDATA;NOME;MOTIVOS;RELATO;PA\n";
+// 097:         vs.forEach(v => { csv += `${v.dataBR};${v.nome};${v.motivos};${v.relato};${v.pa || ''}\n`; });
+// 098:         const bl = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+// 099:         const l = document.createElement('a'); l.href = URL.createObjectURL(bl); l.download = `RELATORIO.csv`; l.click();
+// 100:     }
+// 101: };
+// 102: 
+// 103: document.addEventListener('DOMContentLoaded', async () => {
+// 104:     await window.DB.init();
+// 105:     window.Nav.init();
+// 106: });

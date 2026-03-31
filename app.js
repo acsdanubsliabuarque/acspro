@@ -1,39 +1,33 @@
-/**
- * 006: MOTOR DE ESTADO, NAVEGAÇÃO E INTERFACE (UI)
- * SISTEMA: ACS PRO V12.2 - OSASCO FIELD SYSTEM
- * 
- * Este arquivo integra todos os módulos e gerencia a experiência do usuário.
- */
-
-// 001: ESTADO GLOBAL DA APLICAÇÃO
+/* 001: DEFINICAO DO MOTOR DE ESTADO GLOBAL - INTEROPERABILIDADE TOTAL */
 window.AppState = {
-    activePatient: null,
-    visitStartTime: null,
-    history: ['tela-home'], // Histórico de navegação corrigido
-    unsavedChanges: false,
-    currentViewMode: 'full', // full, compact, list
-    
+    activePatient: null,      // Armazena o munícipe sendo visitado ou editado
+    visitStartTime: null,     // Registro para cálculo de tempo de permanência
+    history: ['tela-home'],   // Pilha de navegação para o comando VOLTAR
+    unsavedChanges: false,    // Trava de segurança para dados não gravados
+    currentViewMode: 'full',  // Estado do Motor de Visualização (full|compact|list)
+    lastSearchType: null,     // Tipo da última consulta (NAME ou ADDRESS)
+    lastSearchData: null,     // Cache dos critérios da última consulta
+
     markUnsaved() { this.unsavedChanges = true; },
     resetUnsaved() { this.unsavedChanges = false; },
     resetPatient() { this.activePatient = null; this.visitStartTime = null; }
 };
 
-// 002: MOTOR DE ROTAS E DIRECIONAMENTO (NAV)
+/* 002: MOTOR DE NAVEGACAO E ROTAS (NAV) */
 window.Nav = {
     init() {
-        // Popula todos os selects de logradouros com a lista oficial de Osasco
+        /* 003: POPULA SELECTS DE LOGRADOURO COM DADOS DE OSASCO */
         const selects = document.querySelectorAll('.select-ruas');
-        const opts = `<option value="">--- ESCOLHA A RUA ---</option>` + 
+        const opts = `<option value="">ESCOLHA O LOGRADOURO...</option>` + 
                      CONFIG_DB.RUAS.map(r => `<option value="${r}">${r}</option>`).join('');
         selects.forEach(s => s.innerHTML = opts);
 
-        // Aplica Máscaras e Maiúsculas Automáticas em tempo real
+        /* 004: MOTOR GLOBAL DE MAIUSCULAS E MASCARAS DINAMICAS */
         document.addEventListener('input', (e) => {
             const el = e.target;
             if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-                el.value = el.value.toUpperCase(); 
+                el.value = el.value.toUpperCase(); // REGRA 3: SCREAMING CAPS
             }
-            // Gatilhos de Máscaras do Utils.js
             if (['c-nasc', 'c-dum', 'v-data'].includes(el.id)) el.value = Utils.masks.date(el.value);
             if (el.id === 'c-cpf') el.value = Utils.masks.cpf(el.value);
             if (el.id === 'c-tel') el.value = Utils.masks.phone(el.value);
@@ -41,116 +35,92 @@ window.Nav = {
         });
     },
 
-    // Navega para uma tela específica
     goTo(id, reset = false) {
-        if (reset) {
-            AppState.history = ['tela-home'];
-        } else {
-            // Evita duplicar a mesma tela no histórico
-            if (AppState.history[AppState.history.length - 1] !== id) {
-                AppState.history.push(id);
-            }
-        }
+        if (reset) AppState.history = ['tela-home'];
+        else if (AppState.history[AppState.history.length - 1] !== id) AppState.history.push(id);
         
-        // Esconde todas as telas e mostra a alvo
         document.querySelectorAll('.container > div').forEach(d => d.classList.add('hidden'));
         const target = document.getElementById(id);
         if (target) {
             target.classList.remove('hidden');
             window.scrollTo(0, 0);
-        } else {
-            console.error("FALHA DE NAVEGAÇÃO: Tela não encontrada ->", id);
         }
     },
 
-    // Volta para a tela anterior
     goBack() {
         if (AppState.history.length > 1) {
-            AppState.history.pop(); // Remove a tela atual
+            AppState.history.pop();
             const prev = AppState.history[AppState.history.length - 1];
-            
-            // Força a exibição sem adicionar novamente ao histórico
-            document.querySelectorAll('.container > div').forEach(d => d.classList.add('hidden'));
-            document.getElementById(prev).classList.remove('hidden');
+            this.goTo(prev);
+            AppState.history.pop(); // Evita duplicação ao re-entrar no goTo
         } else {
             this.goTo('tela-home', true);
         }
-    },
-
-    // Sai de telas de cadastro com confirmação
-    async confirmExit(dest) {
-        if (AppState.unsavedChanges) {
-            const r = await Utils.CustomModals.confirm("DADOS NÃO SALVOS SERÃO PERDIDOS! DESEJA SAIR?");
-            if (!r) return;
-        }
-        AppState.resetUnsaved();
-        if (dest === 'voltar') this.goBack();
-        else this.goTo(dest, true);
     }
 };
 
-// 003: MOTOR DE INTERFACE (UI) PARA CONSTRUIR OS CARDS
+/* 005: MOTOR DE INTERFACE (VIEW ENGINE TRIPLO) */
 window.UI = {
-    // Alterna entre os modos Full, Compacto e Lista
+    /* 006: ALTERNA MODOS DE EXIBICAO RE-EXECUTANDO A ULTIMA BUSCA */
     changeView(mode) {
         AppState.currentViewMode = mode;
-        const lastSearch = document.getElementById('lista-resultados').getAttribute('data-last-search');
-        if (lastSearch) this.searchPessoa(true); // Atualiza a lista atual com o novo modo
+        if (AppState.lastSearchType === 'NAME') this.searchPessoa(true);
+        else if (AppState.lastSearchType === 'ADDRESS') this.searchEndereco(true);
     },
 
-    // CARD COMPLETO: Mostra tudo (Agravos, Pendências, Endereço)
+    /* 007: CONSTRUTOR DE CARD COMPLETO (FULL) - FOCO EPIDEMIOLOGICO */
     async buildCardFull(p) {
         const s = Utils.sanitize;
         const idade = Utils.calculateAge(p.nasc);
         const gest = p.gest ? Utils.getGestationalInfo(p.dum) : null;
-        
-        // Busca pendências ativas para este cidadão
-        const visitas = await DB.getByIndex("visitas", "pacienteId", p.id);
-        const pends = visitas.filter(v => v.pendencia && !v.resolvida);
+        const pends = (await DB.getByIndex("visitas", "pacienteId", p.id)).filter(v => v.pendencia && !v.resolvida);
 
         let badges = "";
-        if(p.hiper) badges += `<span class="badge bg-hiper">HIPERTENSÃO</span>`;
-        if(p.diab) badges += `<span class="badge bg-dia">DIABETES</span>`;
-        if(p.gest) badges += `<span class="badge bg-gest">GESTANTE</span>`;
-        if(p.saudeMental) badges += `<span class="badge bg-sm">S. MENTAL</span>`;
-        if(idade >= 60) badges += `<span class="badge bg-idoso">IDOSO</span>`;
-        if(p.acamado) badges += `<span class="badge" style="background:#00838f">ACAMADO</span>`;
+        const agravos = [
+            {k:'hiper', l:'HIPERTENSÃO', c:'bg-hiper'}, {k:'diab', l:'DIABETES', c:'bg-dia'},
+            {k:'gest', l:'GESTANTE', c:'bg-gest'}, {k:'saudeMental', l:'S. MENTAL', c:'bg-sm'},
+            {k:'acamado', l:'ACAMADO', c:'bg-acam'}, {k:'idoso', l:'IDOSO', c:'bg-idoso'}
+        ];
+        agravos.forEach(i => { if(p[i.k] || (i.k==='idoso' && idade >= 60)) badges += `<span class="badge ${i.c}">${i.l}</span>`; });
 
         return `
             <div class="card ${p.gest ? 'card-gestante' : ''} ${idade >= 60 ? 'card-idoso' : ''}">
-                <div class="info-label">CIDADÃO</div>
+                <div class="info-label">CIDADÃO ${p.nomeSocial ? ' • SOCIAL: ' + s(p.nomeSocial) : ''}</div>
                 <div class="info-valor" style="font-size:18px;"><strong>${s(p.nome)}</strong></div>
                 <div class="grid-2">
                     <div><div class="info-label">NASCIMENTO</div><div class="info-valor">${s(p.nasc)} (${idade} ANOS)</div></div>
-                    <div><div class="info-label">CPF</div><div class="info-valor">${s(p.cpf)}</div></div>
+                    <div><div class="info-label">CPF</div><div class="info-valor">${s(p.cpf) || '---'}</div></div>
                 </div>
-                <div class="info-label">ENDEREÇO</div>
+                <div class="info-label">ENDEREÇO EM OSASCO</div>
                 <div class="info-valor">${s(p.rua)}, ${s(p.num)} | ${s(p.comp)}</div>
                 
                 ${gest ? `
-                    <div class="gestante-info-box">
-                        🤰 IG: ${gest.res} <br> 
-                        📅 DPP: ${gest.dpp} | ${gest.tri}
+                    <div class="gestante-info-box" style="border-left: 5px solid var(--gestante);">
+                        <div style="font-size:16px;">🤰 IG: ${gest.res}</div>
+                        <div style="font-size:12px; opacity:0.8;">📅 DPP: ${gest.dpp} | ${gest.tri}</div>
                     </div>` : ''}
 
-                <div style="margin: 10px 0;">${badges || '<small style="opacity:0.5">SEM AGRAVOS CADASTRADOS</small>'}</div>
+                <div style="margin: 10px 0;">${badges || '<small style="opacity:0.5">SEM AGRAVOS</small>'}</div>
 
                 ${pends.length > 0 ? `
                     <div class="pendencia-ativa-no-card">
-                        <span>⚠️ PENDENTE: ${s(pends[0].pendencia)}</span>
-                        <button class="btn-icon" onclick="Visits.resolvePendency(${pends[0].id})">✅</button>
+                        <span>⚠️ <b>PENDÊNCIA:</b> ${s(pends[0].pendencia)}</span>
+                        <div style="display:flex; gap:5px;">
+                            <button class="btn-icon" onclick="Visits.editPendency(${pends[0].id})">✏️</button>
+                            <button class="btn-icon" onclick="Visits.resolvePendency(${pends[0].id})">✅</button>
+                        </div>
                     </div>` : '' }
 
                 <hr style="opacity:0.1; margin:15px 0;">
                 <button class="btn btn-main" onclick="Visits.start(${p.id})">REGISTRAR VISITA</button>
                 <div class="grid-2">
                     <button class="btn btn-outline btn-sm" onclick="Visits.viewHistory(${p.id})">HISTÓRICO</button>
-                    <button class="btn btn-outline btn-sm" onclick="Registry.prepareEdit(${p.id})">EDITAR CADASTRO</button>
+                    <button class="btn btn-outline btn-sm" onclick="Registry.prepareEdit(${p.id})">EDITAR</button>
                 </div>
             </div>`;
     },
 
-    // CARD COMPACTO: Ideal para busca rápida
+    /* 008: CONSTRUTOR DE CARD COMPACTO (COMPACT) */
     async buildCardCompact(p) {
         const s = Utils.sanitize;
         const idade = Utils.calculateAge(p.nasc);
@@ -158,13 +128,13 @@ window.UI = {
             <div class="card" style="padding:12px; border-left-width:5px;" onclick="Visits.start(${p.id})">
                 <div style="font-weight:bold; color:var(--primary); font-size:14px;">${s(p.nome)} (${idade} ANOS)</div>
                 <div style="font-size:11px; color:#666;">${s(p.rua)}, ${s(p.num)} - ${s(p.comp)}</div>
-                <div style="margin-top:5px;">
-                    ${p.hiper ? '🔴' : ''} ${p.diab ? '🔵' : ''} ${p.gest ? '💗' : ''} ${idade >= 60 ? '🟣' : ''}
+                <div style="margin-top:5px; font-size:10px;">
+                    ${p.hiper?'🔴H':''} ${p.diab?'🔵D':''} ${p.gest?'💗G':''} ${idade>=60?'🟣I':''}
                 </div>
             </div>`;
     },
 
-    // MODO LISTA: Apenas texto
+    /* 009: CONSTRUTOR DE LINHA (LIST) */
     async buildRowList(p) {
         const s = Utils.sanitize;
         const idade = Utils.calculateAge(p.nasc);
@@ -175,32 +145,34 @@ window.UI = {
             </div>`;
     },
 
-    // BUSCA POR NOME
+    /* 010: MOTOR DE BUSCA POR NOME */
     async searchPessoa(refresh = false) {
-        const term = document.getElementById('h-nome').value.toUpperCase().trim();
+        const term = refresh ? AppState.lastSearchData : document.getElementById('h-nome').value.toUpperCase().trim();
         if (!term && !refresh) return Utils.CustomModals.alert("DIGITE UM NOME PARA PESQUISAR.");
         
+        AppState.lastSearchType = 'NAME';
+        AppState.lastSearchData = term;
+
         const all = await DB.getAll("municipes");
         const res = all.filter(p => p.nome.includes(term));
-        
         await this.renderList(`RESULTADOS PARA: "${term}"`, res);
-        document.getElementById('lista-resultados').setAttribute('data-last-search', term);
     },
 
-    // BUSCA POR ENDEREÇO
-    async searchEndereco() {
-        const rua = document.getElementById('h-rua').value;
-        const num = document.getElementById('h-num').value.trim();
-        if (!rua) return Utils.CustomModals.alert("POR FAVOR, SELECIONE UMA RUA.");
+    /* 011: MOTOR DE BUSCA POR ENDERECO */
+    async searchEndereco(refresh = false) {
+        const rua = refresh ? AppState.lastSearchData.rua : document.getElementById('h-rua').value;
+        const num = refresh ? AppState.lastSearchData.num : document.getElementById('h-num').value.trim();
+        if (!rua && !refresh) return Utils.CustomModals.alert("SELECIONE A RUA.");
         
-        const moradoresRua = await DB.getByIndex("municipes", "rua", rua);
-        const filtrados = moradoresRua.filter(p => !num || p.num === num);
-        
+        AppState.lastSearchType = 'ADDRESS';
+        AppState.lastSearchData = { rua, num };
+
+        const moradores = await DB.getByIndex("municipes", "rua", rua);
+        const filtrados = moradores.filter(p => !num || p.num === num);
         await this.renderList(`MORADORES: ${rua}${num ? ', ' + num : ''}`, filtrados);
-        document.getElementById('lista-resultados').setAttribute('data-last-search', "");
     },
 
-    // RENDERIZADOR DE LISTAS (DESPACHANTE)
+    /* 012: DESPACHANTE DE RENDERIZACAO */
     async renderList(title, arr) {
         const container = document.getElementById('lista-resultados');
         container.innerHTML = `<h3 style="margin-bottom:15px; font-size:16px;">${title} (${arr.length})</h3>`;
@@ -211,152 +183,9 @@ window.UI = {
             for (const p of arr) {
                 if (AppState.currentViewMode === 'full') container.innerHTML += await this.buildCardFull(p);
                 else if (AppState.currentViewMode === 'compact') container.innerHTML += await this.buildCardCompact(p);
-                else container.innerHTML += await this.buildRowList(p);
+                else if (AppState.currentViewMode === 'list') container.innerHTML += await this.buildRowList(p);
             }
         }
         Nav.goTo('tela-resultados');
     }
 };
-
-// 004: MOTOR DE BACKUP E EXPORTAÇÃO (VERSÃO CORRIGIDA PARA IMPORTAÇÃO V12)
-window.Backup = {
-    async createBackup() {
-        const m = await DB.getAll("municipes");
-        const v = await DB.getAll("visitas");
-        const a = await DB.getAll("arquivo_pendencias");
-        
-        const dump = { 
-            municipes: m, 
-            visitas: v, 
-            arquivo_pendencias: a, 
-            timestamp: Date.now(),
-            version: "V12.2_OSASCO" 
-        };
-
-        const blob = new Blob([JSON.stringify(dump)], {type: 'application/json'});
-        const lnk = document.createElement('a');
-        lnk.href = URL.createObjectURL(blob);
-        lnk.download = `BACKUP_ACS_PRO_${new Date().toISOString().split('T')[0]}.json`;
-        lnk.click();
-    },
-
-    async restoreBackup(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const rawData = JSON.parse(e.target.result);
-                
-                // Validação de segurança
-                const confirm = await Utils.CustomModals.confirm(
-                    "ATENÇÃO: O ARQUIVO CONTÉM " + (rawData.m ? rawData.m.length : 0) + " REGISTROS.\n\nDESEJA CONVERTER E RESTAURAR AGORA?"
-                );
-                if (!confirm) return;
-
-                // 1. Identifica as fontes de dados (m = municipes, v = visitas)
-                const oldM = rawData.m || rawData.municipes || [];
-                const oldV = rawData.v || rawData.visitas || [];
-
-                console.log("Iniciando conversão de dados...");
-
-                // 2. Processa Municipes
-                for (let p of oldM) {
-                    const mappedP = {
-                        id: Number(p.id),
-                        nome: (p.nome || "").toUpperCase().trim(),
-                        nasc: p.nasc || "",
-                        sexo: (p.sexo || "MASCULINO").toUpperCase(),
-                        raca: (p.raca || "PARDA").toUpperCase(),
-                        mae: (p.mae || "").toUpperCase(),
-                        pai: (p.pai || "").toUpperCase(),
-                        cpf: p.cpf || "",
-                        cns: p.cns || "",
-                        tel: p.telprincipal || p.tel || "",
-                        nacionalidade: "BRASILEIRA",
-                        
-                        // Campos críticos para o Índice de Endereço
-                        rua: (p.rua || "NÃO INFORMADA").toUpperCase(),
-                        num: (p.num || "S/N").toString().toUpperCase(),
-                        comp: (p.comp || "CASA ÚNICA").toUpperCase(),
-                        ma: p.ma || "",
-                        seg: p.seg || "",
-                        
-                        isResp: p.isResp === "NAO" ? "NAO" : "SIM",
-                        relacao: (p.relacao || "").toUpperCase(),
-                        respId: p.respId ? Number(p.respId) : null,
-
-                        // Conversão de Agravos (0/1 ou boolean)
-                        hiper: p.hiper === true || p.hiper === 1,
-                        diab: p.diab === true || p.diab === 1,
-                        gest: p.gest === true || p.gest === 1,
-                        dum: p.dum || "",
-                        saudeMental: p.mental === true || p.mental === 1 || p.saudeMental === true,
-                        acamado: p.acam === true || p.acam === 1 || p.acamado === true,
-                        fumante: p.fum === true || p.fum === 1 || p.fumante === true,
-                        alcool: p.alcool === true || p.alcool === 1,
-                        obs: (p.obs || "").toUpperCase()
-                    };
-                    
-                    // Salva um por um para garantir a integridade
-                    await DB.put("municipes", mappedP);
-                }
-
-                // 3. Processa Visitas
-                for (let v of oldV) {
-                    const mappedV = {
-                        id: Number(v.id),
-                        pacienteId: Number(v.pacienteId),
-                        nome: (v.nome || "").toUpperCase(),
-                        dataTS: v.dataTimestamp || v.dataTS || Date.now(),
-                        // Tenta pegar a dataBR ou converter da dataISO do backup
-                        dataBR: v.dataBR || (v.dataISO ? new Date(v.dataISO).toLocaleDateString('pt-BR') : ""),
-                        turno: (v.turno || "MANHÃ").toUpperCase(),
-                        motivos: (v.motivos || "VISITA PERIÓDICA").toUpperCase(),
-                        relato: (v.relato || "").toUpperCase(),
-                        pa: v.pa || "",
-                        hgt: v.hgt || "",
-                        pendencia: (v.pendencia || "").toUpperCase(),
-                        resolvida: v.resolvida === true || v.resolvida === 1,
-                        relatoResolvido: (v.relatoResolvido || "").toUpperCase(),
-                        dataResolvido: v.dataResolvido || ""
-                    };
-                    await DB.put("visitas", mappedV);
-                }
-
-                await Utils.CustomModals.alert("RESTAURAÇÃO CONCLUÍDA!\nREGISTROS PROCESSADOS COM SUCESSO.");
-                location.reload();
-
-            } catch (err) {
-                console.error("Erro na restauração:", err);
-                alert("FALHA AO PROCESSAR ARQUIVO: O formato dos dados não é compatível.");
-            }
-        };
-        reader.readAsText(file);
-    },
-
-    async exportCSV() {
-        const visitas = await DB.getAll("visitas");
-        let csv = "\ufeffDATA;NOME;MOTIVOS;RELATO;PA;HGT\n";
-        visitas.forEach(v => {
-            csv += `${v.dataBR};${v.nome};${v.motivos};${v.relato};${v.pa || ''};${v.hgt || ''}\n`;
-        });
-        const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
-        const lnk = document.createElement('a');
-        lnk.href = URL.createObjectURL(blob);
-        lnk.download = `RELATORIO_ACS_OSASCO.csv`;
-        lnk.click();
-    }
-};
-
-// 005: INICIALIZAÇÃO DO SISTEMA
-document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        await DB.init();
-        Nav.init();
-        console.log("ACS PRO V12.2: Inicializado e Estável.");
-    } catch (e) {
-        console.error("ERRO CRÍTICO NA CARGA DO APP:", e);
-    }
-});

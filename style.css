@@ -1,165 +1,229 @@
-/* 001: //////////////////////////////////////////////////////////////////////////////// */
-/* 002: // ARQUIVO: STYLE.CSS - DESIGN SYSTEM ACS PRO V12.2 OSASCO                    // */
-/* 003: // FINALIDADES: ACESSIBILIDADE EM CAMPO, ALTA LUMINOSIDADE E ERGONOMIA        // */
-/* 004: //////////////////////////////////////////////////////////////////////////////// */
+/* 
+ * 002: IDENTIDADE VISUAL E LAYOUT (CSS)
+ * SISTEMA: ACS PRO V12.2 - OSASCO FIELD SYSTEM
+ * 
+ * Focado em alta legibilidade sob luz solar e usabilidade em dispositivos móveis.
+ */
 
 :root {
-    --primary: #004a99;         /* AZUL PADRAO SAUDE */
+    --primary: #004a99;         /* Azul Oficial */
     --primary-dark: #003366;
-    --secondary: #6c757d;       /* CINZA NEUTRO */
-    --success: #218838;         /* VERDE SUCESSO */
-    --danger: #d32f2f;          /* VERMELHO ALERTA */
-    --warning: #ffc107;         /* AMARELO PENDENCIA */
-    --bg: #f4f7fa;              /* FUNDO LEVE PARA SMARTPHONE */
-    --gestante-pink: #e83e8c;   /* IDENTIFICACAO GESTANTE */
-    --idoso-purple: #673ab7;    /* IDENTIFICACAO IDOSO */
-    --text-dark: #2c3e50;
+    --secondary: #6c757d;       /* Cinza Ação */
+    --success: #218838;         /* Verde Salvar */
+    --danger: #d32f2f;          /* Vermelho Alerta */
+    --warning: #ffc107;         /* Amarelo Pendência */
+    --bg: #f0f2f5;              /* Fundo Neutro */
     --white: #ffffff;
+    --gestante: #e83e8c;        /* Identificação Pink */
+    --idoso: #673ab7;           /* Identificação Roxo */
+    --saudemental: #e64a19;     /* Identificação Laranja */
+    --shadow: 0 4px 15px rgba(0,0,0,0.1);
+    --radius: 12px;
 }
 
-/* 005: CONFIGURACAO GLOBAL DE CORPO E TEXTO */
+/* 001: RESET E CONFIGURAÇÕES DE TOQUE */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
 body { 
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-    margin: 0; background: var(--bg); color: var(--text-dark); 
-    -webkit-font-smoothing: antialiased; line-height: 1.5;
-    user-select: none; /* EVITA CÓPIA ACIDENTAL EM CAMPO */
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
+    margin: 0; 
+    background: var(--bg); 
+    color: #222; 
+    line-height: 1.5;
+    user-select: none; /* Evita seleção acidental em campo */
 }
 
-/* 006: HEADER FIXO PARA ORIENTACAO */
+/* 002: CABEÇALHO FIXO */
 header { 
-    background: var(--primary); color: var(--white); padding: 16px; 
-    text-align: center; position: sticky; top: 0; z-index: 1000; 
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+    background: var(--primary); 
+    color: var(--white); 
+    padding: 15px; 
+    text-align: center; 
+    position: sticky; 
+    top: 0; 
+    z-index: 1000; 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2); 
 }
 
-/* 007: CONTAINER ADAPTATIVO */
+header h2 { margin: 0; font-size: 18px; letter-spacing: 1px; }
+#contagem { font-size: 11px; opacity: 0.9; margin-top: 4px; font-weight: bold; }
+
+/* 003: CONTAINER PRINCIPAL */
 .container { 
-    padding: 15px; max-width: 700px; margin: auto; 
-    padding-bottom: 120px; /* ESPACO PARA A NAVBAR INFERIOR */
+    padding: 15px; 
+    max-width: 800px; 
+    margin: auto; 
+    padding-bottom: 160px; /* Espaço para botão de salvar + navbar */
 }
 
-/* 008: CARDS - ELEMENTO PRINCIPAL DE DADOS */
+/* 004: SISTEMA DE CARDS */
 .card { 
-    background: var(--white); border-radius: 16px; padding: 20px; 
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 18px; 
-    border-left: 8px solid var(--primary); position: relative;
-    transition: transform 0.1s ease-in-out;
+    background: var(--white); 
+    border-radius: var(--radius); 
+    padding: 18px; 
+    box-shadow: var(--shadow); 
+    margin-bottom: 20px; 
+    border-left: 8px solid var(--primary);
+    transition: transform 0.1s;
 }
-.card:active { transform: scale(0.98); }
 
-/* 009: VARIACAO VISUAL DE CARDS */
-.card-gestante { border-left-color: var(--gestante-pink) !important; }
-.card-idoso { border-left-color: var(--idoso-purple) !important; }
+.card:active { transform: scale(0.99); }
+
+/* Variantes de Card por agravo */
+.card-gestante { border-left-color: var(--gestante) !important; }
+.card-idoso { border-left-color: var(--idoso) !important; }
 .card-pendencia { border-left-color: var(--warning) !important; }
 
-/* 010: BARRA DE GESTACAO (INVERTIDA ACIMA DAS BADGES CONFORME PEDIDO) */
-.gestante-badge-info { 
-    background: #fff0f5; color: #c2185b; padding: 15px; border-radius: 12px; 
-    font-size: 14px; margin: 12px 0; border: 1px solid #f8bbd0; 
-    font-weight: bold; line-height: 1.4;
+/* 005: FORMULÁRIOS E INPUTS */
+label { 
+    display: block; 
+    margin-top: 15px; 
+    font-weight: 800; 
+    font-size: 12px; 
+    color: #444; 
+    text-transform: uppercase; 
 }
 
-/* 011: BARRA DE PENDENCIAS COM BOTOES DE ACAO */
-.pendencia-ativa-no-card { 
-    background: #fffbe6; border: 1px solid #ffe58f; padding: 14px; 
-    border-radius: 12px; margin-top: 12px; font-size: 13px; color: #856404; 
-    display: flex; justify-content: space-between; align-items: center;
+input, select, textarea { 
+    width: 100%; 
+    min-height: 48px; 
+    padding: 12px; 
+    margin-top: 5px; 
+    border: 2px solid #ddd; 
+    border-radius: 10px; 
+    font-size: 16px; 
+    background: #fff;
+    text-transform: uppercase; /* Força visualização em maiúsculas */
 }
 
-/* 012: BOTOES DO SISTEMA */
+input:focus, select:focus, textarea:focus { 
+    border-color: var(--primary); 
+    outline: none; 
+    background: #fdfdfd; 
+}
+
+/* 006: BOTÕES */
 .btn { 
-    padding: 16px; border: none; border-radius: 12px; font-size: 15px; 
-    font-weight: bold; cursor: pointer; width: 100%; margin: 8px 0; 
-    display: flex; align-items: center; justify-content: center;
+    padding: 15px; 
+    border: none; 
+    border-radius: 10px; 
+    font-size: 15px; 
+    font-weight: bold; 
+    cursor: pointer; 
+    width: 100%; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    text-transform: uppercase;
     transition: filter 0.2s;
 }
-.btn:active { filter: brightness(0.8); }
+
+.btn:active { filter: brightness(1.2); }
 
 .btn-main { background: var(--primary); color: var(--white); }
-.btn-outline { background: var(--white); border: 2.5px solid var(--primary); color: var(--primary); }
+.btn-outline { background: var(--white); border: 2px solid var(--primary); color: var(--primary); }
 
+/* BOTÃO DE SALVAR FIXO (CORRIGIDO PARA NÃO OBSTRUIR) */
 .btn-save { 
-    background: var(--success); color: var(--white); position: fixed; 
-    bottom: 85px; left: 50%; transform: translateX(-50%); 
-    width: 90%; max-width: 650px; z-index: 1050; 
-    box-shadow: 0 5px 25px rgba(0,0,0,0.3); border: 2px solid #fff;
+    background: var(--success); 
+    color: var(--white); 
+    position: fixed; 
+    bottom: 85px; 
+    left: 50%; 
+    transform: translateX(-50%); 
+    width: 92%; 
+    max-width: 760px;
+    z-index: 1200; 
+    box-shadow: 0 -4px 15px rgba(0,0,0,0.2); 
+    height: 55px;
 }
 
-.btn-sm { padding: 10px 15px; font-size: 12px; width: auto; margin: 2px; }
-.btn-xs { padding: 5px 10px; font-size: 11px; width: auto; border-radius: 6px; }
+.btn-sm { padding: 8px 12px; font-size: 12px; width: auto; margin: 4px; }
+.btn-icon { background: #eee; border-radius: 8px; padding: 10px; margin-left: 5px; border: 1px solid #ccc; }
 
-/* 013: ICONES DE ACAO RAPIDA */
-.btn-icon { 
-    background: #fff; border: 1px solid #ddd; padding: 10px; 
-    cursor: pointer; border-radius: 10px; margin-left: 8px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05); font-size: 16px;
-}
-
-/* 014: FORMULARIOS - FORCANDO MAIUSCULAS VIA CSS */
-label { display: block; margin-top: 18px; font-weight: bold; font-size: 12px; color: #555; text-transform: uppercase; }
-input, select, textarea { 
-    width: 100%; padding: 16px; margin-top: 6px; border: 2px solid #e2e8f0; 
-    border-radius: 10px; box-sizing: border-box; font-size: 16px; 
-    background: #fff; text-transform: uppercase; /* REGRA ACS PRO */
-}
-input:focus { border-color: var(--primary); outline: none; background: #f8faff; }
-
-/* 015: GRIDS DE POSICIONAMENTO */
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-.grid-check { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 15px; }
-
-/* 016: CHECKBOXES ESTILIZADOS */
-.check-box { 
-    background: #fff; border: 2px solid #edf2f7; padding: 15px; 
-    border-radius: 12px; display: flex; align-items: center; gap: 12px; 
-    font-size: 14px; font-weight: bold; cursor: pointer;
-}
-.check-box input { width: 24px; height: 24px; margin: 0; }
-
-/* 017: BADGES DE AGRAVOS */
+/* 007: COMPONENTES DE SAÚDE */
 .badge { 
-    padding: 6px 12px; border-radius: 8px; font-size: 10px; color: #fff; 
-    margin: 3px; font-weight: 900; display: inline-block; 
+    padding: 5px 10px; 
+    border-radius: 5px; 
+    font-size: 10px; 
+    color: #fff; 
+    margin: 2px; 
+    font-weight: bold; 
+    display: inline-block; 
 }
-.bg-hiper { background: #d32f2f; }
-.bg-dia { background: #455a64; }
-.bg-gest { background: var(--gestante-pink); }
-.bg-saudemental { background: #e64a19; }
-.bg-idoso { background: var(--idoso-purple); }
+.bg-hiper { background: #c62828; }
+.bg-dia { background: #333; }
+.bg-gest { background: var(--gestante); }
+.bg-sm { background: var(--saudemental); }
+.bg-idoso { background: var(--idoso); }
 
-/* 018: MODOS DE VISUALIZACAO (VIEW ENGINE) */
-.view-selector-bar { display: flex; gap: 6px; margin-bottom: 20px; }
-.btn-view { flex: 1; padding: 10px; border: 1px solid #ddd; background: #fff; border-radius: 8px; font-size: 11px; font-weight: bold; cursor: pointer; }
-
-.view-compact { 
-    padding: 16px; background: #fff; margin-bottom: 10px; border-radius: 14px; 
-    border-left: 6px solid var(--primary); box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+.gestante-info-box { 
+    background: #fff0f5; 
+    padding: 12px; 
+    border-radius: 8px; 
+    border: 1px solid #f8bbd0; 
+    margin: 10px 0; 
+    color: #c2185b;
+    font-weight: bold;
 }
 
-.view-list { 
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 12px 18px; background: #fff; border-bottom: 1px solid #eef2f7; font-size: 14px;
-}
-
-/* 019: FOOTER NAVBAR */
-.footer-nav { 
-    position: fixed; bottom: 0; left: 0; right: 0; background: #fff; 
-    display: flex; border-top: 1px solid #cbd5e0; padding: 14px 5px; 
-    z-index: 1001; box-shadow: 0 -4px 15px rgba(0,0,0,0.05);
-}
-.nav-item { flex: 1; text-align: center; font-size: 11px; color: #718096; cursor: pointer; font-weight: 800; text-transform: uppercase; }
-.nav-item.active { color: var(--primary); }
-
-/* 020: MODAL OVERLAY FIXO */
+/* 008: MODAIS (CORRIGIDO Z-INDEX 2000) */
 .modal-overlay { 
     position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
-    background: rgba(0,0,0,0.85); display: flex; align-items: center; 
-    justify-content: center; z-index: 9999; padding: 20px; 
+    background: rgba(0,0,0,0.85); 
+    display: flex; align-items: center; justify-content: center; 
+    z-index: 2000; 
+    padding: 20px; 
 }
 
-/* 021: UTILITARIOS */
+.modal-content { 
+    background: var(--white); 
+    width: 100%; 
+    max-width: 450px; 
+    border-radius: 20px; 
+    padding: 25px; 
+    box-shadow: 0 15px 50px rgba(0,0,0,0.5); 
+}
+
+/* 009: BARRA DE NAVEGAÇÃO INFERIOR */
+.footer-nav { 
+    position: fixed; 
+    bottom: 0; left: 0; right: 0; 
+    background: var(--white); 
+    display: flex; 
+    border-top: 1px solid #ddd; 
+    padding: 10px 0; 
+    z-index: 1100; 
+}
+.nav-item { 
+    flex: 1; 
+    text-align: center; 
+    font-size: 11px; 
+    color: #666; 
+    font-weight: bold;
+}
+.nav-item.active { color: var(--primary); }
+
+/* 010: UTILITÁRIOS */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 .hidden { display: none !important; }
-.info-label { font-size: 10px; color: #a0aec0; font-weight: 800; text-transform: uppercase; margin-bottom: 3px; }
-.info-valor { font-size: 15px; color: #2d3748; margin-bottom: 10px; }
-.card-familiar { background: #f8fafc; padding: 12px; border: 1px dashed #cbd5e0; border-radius: 10px; margin-bottom: 8px; font-size: 13px; }
+.info-label { font-size: 10px; color: #777; font-weight: bold; margin-bottom: 2px; }
+.info-valor { font-size: 15px; margin-bottom: 10px; }
+
+/* Animação para pendências críticas */
+@keyframes pulse-yellow {
+    0% { background-color: #fffde7; }
+    50% { background-color: #fff59d; }
+    100% { background-color: #fffde7; }
+}
+.pendencia-ativa-no-card { 
+    animation: pulse-yellow 2s infinite; 
+    border: 1px solid #ffd600;
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}

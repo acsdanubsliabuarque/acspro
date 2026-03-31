@@ -1,155 +1,209 @@
-// 001: ////////////////////////////////////////////////////////////////////////////////
-// 002: // ARQUIVO: DATABASE.JS - MOTOR DE PERSISTENCIA INDEXEDDB V12.2 PRO           //
-// 003: // VERSÃO DEFINITIVA - SEM SIMPLIFICAÇÕES E TOTALMENTE NUMERADO              //
-// 004: ////////////////////////////////////////////////////////////////////////////////
-// 005: 
-// 006: // DEFINICAO GLOBAL DE CONFIGURACAO E LISTA DE LOGRADOUROS OFICIAIS
-// 007: window.CONFIG_DB = {
-// 008:     DB_NAME: "ACS_DATABASE_PRO_V12_MODULAR",
-// 009:     DB_VERSION: 2, 
-// 010:     RUAS: [
-// 011:         "RUA DA MINÁ", "VIELA DA RUA DA MINA", "RUA APÓSTOLO JOÃO BATISTA", 
-// 012:         "RUA SACERDOTE MELQUISEDEQUE", "RUA APÓSTOLO MATEUS", "RUA MÁRIO TORRES", 
-// 013:         "RUA APÓSTOLO PEDRO", "RUA APÓSTOLO FELIPE", "RUA VIRGINIA JOANA DA SILVA", 
-// 014:         "RUA JOSÉ LUIZ DE JESUS SANTOS", "VIELA UTINGA", "AVENIDA DOS TRABALHADORES"
-// 015:     ]
-// 016: };
-// 017: 
-// 018: // OBJETO MESTRE DE GERENCIAMENTO DE DADOS - ACESSIVEL GLOBALMENTE
-// 019: window.DB = {
-// 020:     instance: null,
-// 021: 
-// 022:     // 023: METODO DE INICIALIZACAO COM TRATAMENTO DE ATUALIZACAO DE ESQUEMA (UPGRADE)
-// 024:     async init() {
-// 025:         return new Promise((resolve, reject) => {
-// 026:             // 027: ABERTURA DO BANCO DE DADOS INDEXEDDB
-// 028:             const request = indexedDB.open(window.CONFIG_DB.DB_NAME, window.CONFIG_DB.DB_VERSION);
-// 029: 
-// 030:             // 031: EVENTO DE CRIAÇÃO OU ATUALIZAÇÃO DA ESTRUTURA DO BANCO
-// 032:             request.onupgradeneeded = (e) => {
-// 033:                 const db = e.target.result;
-// 034:                 
-// 035:                 // 036: TABELA DE MUNICIPES: ARMAZENA CADASTROS INDIVIDUAIS E DOMICILIARES
-// 037:                 if (!db.objectStoreNames.contains("municipes")) {
-// 038:                     const mStore = db.createObjectStore("municipes", { keyPath: "id", autoIncrement: true });
-// 039:                     // 040: INDEXAÇÃO PARA BUSCAS RÁPIDAS E RELATÓRIOS EPIDEMIOLÓGICOS
-// 041:                     mStore.createIndex("cpf", "cpf", { unique: false });
-// 042:                     mStore.createIndex("nome", "nome", { unique: false });
-// 043:                     mStore.createIndex("rua", "rua", { unique: false });
-// 044:                     mStore.createIndex("respId", "respId", { unique: false });
-// 045:                     mStore.createIndex("gest", "gest", { unique: false });
-// 046:                     mStore.createIndex("idoso", "idoso", { unique: false });
-// 047:                     mStore.createIndex("saudeMental", "saudeMental", { unique: false });
-// 048:                     // 049: INDICE DE CHAVE COMPOSTA PARA LOCALIZACAO PRECISA DE MORADORES
-// 050:                     mStore.createIndex("enderecoChave", ["rua", "num", "comp"], { unique: false });
-// 051:                 }
-// 052: 
-// 053:                 // 054: TABELA DE VISITAS: ARMAZENA REGISTROS SISAB E PENDENCIAS
-// 055:                 if (!db.objectStoreNames.contains("visitas")) {
-// 056:                     const vStore = db.createObjectStore("visitas", { keyPath: "id", autoIncrement: true });
-// 057:                     vStore.createIndex("pacienteId", "pacienteId", { unique: false });
-// 058:                     vStore.createIndex("resolvida", "resolvida", { unique: false });
-// 059:                     vStore.createIndex("dataTS", "dataTS", { unique: false });
-// 060:                 }
-// 061: 
-// 062:                 // 063: TABELA DE ARQUIVO MORTO DE PENDENCIAS (LOG DE AUDITORIA)
-// 064:                 if (!db.objectStoreNames.contains("arquivo_pendencias")) {
-// 065:                     const aStore = db.createObjectStore("arquivo_pendencias", { keyPath: "id", autoIncrement: true });
-// 066:                     aStore.createIndex("visitaId", "visitaId", { unique: true });
-// 067:                     aStore.createIndex("pacienteId", "pacienteId", { unique: false });
-// 068:                     aStore.createIndex("dataArquivamento", "dataArquivamento", { unique: false });
-// 069:                 }
-// 070:             };
-// 071: 
-// 072:             // 073: SUCESSO NA CONEXÃO COM O BANCO
-// 074:             request.onsuccess = (e) => { 
-// 075:                 this.instance = e.target.result; 
-// 076:                 this.updateCount(); 
-// 077:                 console.log("BASE DE DADOS ACS PRO V12.2 INICIALIZADA COM SUCESSO.");
-// 078:                 resolve(); 
-// 079:             };
-// 080: 
-// 081:             // 082: TRATAMENTO DE ERROS CRÍTICOS
-// 083:             request.onerror = (e) => {
-// 084:                 console.error("ERRO CRITICO AO ABRIR INDEXEDDB:", e.target.error);
-// 085:                 reject(e.target.error);
-// 086:             };
-// 087:         });
-// 088:     },
-// 089: 
-// 090:     // 091: ATUALIZACAO DINAMICA DO CONTADOR DE POPULACAO NA INTERFACE
-// 092:     async updateCount() {
-// 093:         if (!this.instance) return;
-// 094:         const tx = this.instance.transaction("municipes", "readonly").objectStore("municipes");
-// 095:         const req = tx.count();
-// 096:         req.onsuccess = () => {
-// 097:             const el = document.getElementById('contagem');
-// 098:             if(el) el.innerText = `POPULAÇÃO TOTAL DO SETOR: ${req.result} CIDADÃOS`;
-// 099:         };
-// 100:     },
-// 101: 
-// 102:     // 103: RECUPERA REGISTRO ESPECÍFICO PELO ID
-// 104:     async get(store, id) {
-// 105:         return new Promise((resolve) => {
-// 106:             const tx = this.instance.transaction(store, "readonly");
-// 107:             const req = tx.objectStore(store).get(Number(id));
-// 108:             req.onsuccess = () => resolve(req.result);
-// 109:             req.onerror = () => resolve(null);
-// 110:         });
-// 111:     },
-// 112: 
-// 113:     // 114: RECUPERA TODOS OS REGISTROS DE UMA TABELA
-// 115:     async getAll(store) {
-// 116:         return new Promise((resolve) => {
-// 117:             const tx = this.instance.transaction(store, "readonly");
-// 118:             const req = tx.objectStore(store).getAll();
-// 119:             req.onsuccess = () => resolve(req.result);
-// 120:             req.onerror = () => resolve([]);
-// 121:         });
-// 122:     },
-// 123: 
-// 124:     // 125: BUSCA AVANÇADA POR ÍNDICE E VALOR
-// 126:     async getByIndex(store, indexName, value) {
-// 127:         return new Promise((resolve) => {
-// 128:             const tx = this.instance.transaction(store, "readonly");
-// 129:             const idx = tx.objectStore(store).index(indexName);
-// 130:             const req = idx.getAll(value);
-// 131:             req.onsuccess = () => resolve(req.result);
-// 132:             req.onerror = () => resolve([]);
-// 133:         });
-// 134:     },
-// 135: 
-// 136:     // 137: SALVAMENTO OU ATUALIZAÇÃO (PUT) COM INTEGRIDADE DE DADOS
-// 138:     async put(store, data) {
-// 139:         return new Promise((resolve, reject) => {
-// 140:             const tx = this.instance.transaction(store, "readwrite");
-// 141:             const req = tx.objectStore(store).put(data);
-// 142:             req.onsuccess = () => {
-// 143:                 if (store === "municipes") this.updateCount();
-// 144:                 resolve(req.result);
-// 145:             };
-// 146:             req.onerror = () => reject(req.error);
-// 147:         });
-// 148:     },
-// 149: 
-// 150:     // 151: BUSCA DE COMPLEMENTOS EXISTENTES PARA VALIDACAO DE CONFLITO DE NUCLEO
-// 152:     async findAddressComplements(rua, num) {
-// 153:         const all = await this.getByIndex("municipes", "rua", rua || "");
-// 154:         const filtrado = all.filter(p => p.num === num);
-// 155:         const complementos = [...new Set(filtrado.map(p => p.comp || "CASA ÚNICA"))];
-// 156:         return complementos;
-// 157:     },
-// 158: 
-// 159:     // 160: REMOÇÃO FÍSICA DE REGISTRO
-// 161:     async delete(store, id) {
-// 162:         return new Promise((resolve, reject) => {
-// 163:             const tx = this.instance.transaction(store, "readwrite");
-// 164:             const req = tx.objectStore(store).delete(Number(id));
-// 165:             tx.oncomplete = () => {
-// 166:                 if (store === "municipes") this.updateCount();
-// 167:                 resolve(true);
-// 168:             };
-// 169:             tx.onerror = () => reject(tx.error);
-// 170:         });
-// 171:     }
-// 172: };
+/**
+ * 001: MOTOR DE DADOS PERMANENTE (INDEXEDDB)
+ * SISTEMA: ACS PRO V12.2 - OSASCO FIELD SYSTEM
+ * 
+ * Este arquivo é o alicerce do sistema. Ele gerencia a persistência local,
+ * garantindo que os dados não sejam perdidos mesmo sem internet.
+ */
+
+const CONFIG_DB = {
+    DB_NAME: "ACS_DATABASE_PRO_V12_OSASCO",
+    DB_VERSION: 3, // Versão incrementada para suportar novos índices de família
+    STORES: {
+        MUNICIPES: "municipes",
+        VISITAS: "visitas",
+        ARQUIVO: "arquivo_pendencias"
+    },
+    // Lista oficial de logradouros para padronização de busca
+    RUAS: [
+        "RUA DA MINÁ", "VIELA DA RUA DA MINA", "RUA APÓSTOLO JOÃO BATISTA", 
+        "RUA SACERDOTE MELQUISEDEQUE", "RUA APÓSTOLO MATEUS", "RUA MÁRIO TORRES", 
+        "RUA APÓSTOLO PEDRO", "RUA APÓSTOLO FELIPE", "RUA VIRGINIA JOANA DA SILVA", 
+        "RUA JOSÉ LUIZ DE JESUS SANTOS", "VIELA UTINGA", "AVENIDA DOS TRABALHADORES"
+    ]
+};
+
+window.DB = {
+    instance: null,
+
+    /**
+     * Inicializa o banco de dados e cria as tabelas (Object Stores) se necessário.
+     */
+    async init() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(CONFIG_DB.DB_NAME, CONFIG_DB.DB_VERSION);
+
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+
+                // --- STORE: MUNICIPES (CIDADÃOS E FAMÍLIAS) ---
+                if (!db.objectStoreNames.contains(CONFIG_DB.STORES.MUNICIPES)) {
+                    const mStore = db.createObjectStore(CONFIG_DB.STORES.MUNICIPES, { keyPath: "id", autoIncrement: true });
+                    
+                    // Índices de Busca Individual
+                    mStore.createIndex("cpf", "cpf", { unique: false });
+                    mStore.createIndex("nome", "nome", { unique: false });
+                    mStore.createIndex("rua", "rua", { unique: false });
+                    
+                    // Índice de Vínculo Familiar (Fundamental para ver dependentes)
+                    mStore.createIndex("respId", "respId", { unique: false });
+                    
+                    // Índice de Agravos (Filtros de Saúde)
+                    mStore.createIndex("gest", "gest", { unique: false });
+                    mStore.createIndex("idoso", "idoso", { unique: false });
+                    mStore.createIndex("saudeMental", "saudeMental", { unique: false });
+
+                    // Índice Composto: Evita duplicidade de núcleos no mesmo endereço
+                    mStore.createIndex("enderecoChave", ["rua", "num", "comp"], { unique: false });
+                } else {
+                    // Atualização de índices para bases já existentes
+                    const tx = e.currentTarget.transaction;
+                    const mStore = tx.objectStore(CONFIG_DB.STORES.MUNICIPES);
+                    if (!mStore.indexNames.contains("respId")) mStore.createIndex("respId", "respId", { unique: false });
+                    if (!mStore.indexNames.contains("enderecoChave")) mStore.createIndex("enderecoChave", ["rua", "num", "comp"], { unique: false });
+                }
+
+                // --- STORE: VISITAS (REGISTROS DIÁRIOS) ---
+                if (!db.objectStoreNames.contains(CONFIG_DB.STORES.VISITAS)) {
+                    const vStore = db.createObjectStore(CONFIG_DB.STORES.VISITAS, { keyPath: "id", autoIncrement: true });
+                    vStore.createIndex("pacienteId", "pacienteId", { unique: false });
+                    vStore.createIndex("resolvida", "resolvida", { unique: false });
+                    vStore.createIndex("dataTS", "dataTS", { unique: false });
+                }
+
+                // --- STORE: ARQUIVO MORTO (HISTÓRICO DE PENDÊNCIAS) ---
+                if (!db.objectStoreNames.contains(CONFIG_DB.STORES.ARQUIVO)) {
+                    const aStore = db.createObjectStore(CONFIG_DB.STORES.ARQUIVO, { keyPath: "id", autoIncrement: true });
+                    aStore.createIndex("visitaId", "visitaId", { unique: true });
+                    aStore.createIndex("pacienteId", "pacienteId", { unique: false });
+                }
+            };
+
+            request.onsuccess = (e) => {
+                this.instance = e.target.result;
+                console.log("DATABASE: Conectado e pronto.");
+                this.updateCount();
+                resolve();
+            };
+
+            request.onerror = (e) => {
+                console.error("DATABASE: Erro ao abrir banco:", e.target.error);
+                reject(e.target.error);
+            };
+        });
+    },
+
+    /**
+     * Retorna um registro único pelo ID numérico
+     */
+    async get(store, id) {
+        return new Promise((resolve) => {
+            const tx = this.instance.transaction(store, "readonly");
+            const req = tx.objectStore(store).get(Number(id));
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => resolve(null);
+        });
+    },
+
+    /**
+     * Retorna todos os registros de uma store
+     */
+    async getAll(store) {
+        return new Promise((resolve) => {
+            const tx = this.instance.transaction(store, "readonly");
+            const req = tx.objectStore(store).getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => resolve([]);
+        });
+    },
+
+    /**
+     * Busca registros baseado em um índice específico (Ex: buscar dependentes pelo ID do Responsável)
+     */
+    async getByIndex(store, indexName, value) {
+        return new Promise((resolve) => {
+            const tx = this.instance.transaction(store, "readonly");
+            const index = tx.objectStore(store).index(indexName);
+            const req = index.getAll(value);
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => resolve([]);
+        });
+    },
+
+    /**
+     * Insere ou Atualiza dados com sanitização automática
+     */
+    async put(store, data) {
+        return new Promise((resolve, reject) => {
+            // Prevenção de erros: Garante que strings fiquem em MAIÚSCULAS e remove espaços extras
+            Object.keys(data).forEach(key => {
+                if (typeof data[key] === 'string' && !['dataTS', 'dataBR'].includes(key)) {
+                    data[key] = data[key] ? data[key].toUpperCase().trim() : "";
+                }
+            });
+
+            const tx = this.instance.transaction(store, "readwrite");
+            const req = tx.objectStore(store).put(data);
+
+            req.onsuccess = () => {
+                if (store === CONFIG_DB.STORES.MUNICIPES) this.updateCount();
+                resolve(req.result);
+            };
+
+            req.onerror = (e) => {
+                console.error(`DATABASE Erro ao salvar em ${store}:`, e.target.error);
+                reject(e.target.error);
+            };
+        });
+    },
+
+    /**
+     * Busca complementos de endereços existentes para evitar conflitos de famílias
+     */
+    async findAddressComplements(rua, num) {
+        return new Promise((resolve) => {
+            const tx = this.instance.transaction(CONFIG_DB.STORES.MUNICIPES, "readonly");
+            const index = tx.objectStore(CONFIG_DB.STORES.MUNICIPES).index("enderecoChave");
+            
+            // Busca simplificada pelo prefixo do endereço no índice composto
+            const range = IDBKeyRange.bound([rua, num, ""], [rua, num, "\uffff"]);
+            const req = index.getAll(range);
+
+            req.onsuccess = () => {
+                const results = req.result;
+                // Extrai complementos únicos (Ex: "CASA 1", "FUNDOS")
+                const comps = [...new Set(results.map(p => p.comp || "CASA ÚNICA"))];
+                resolve(comps);
+            };
+            req.onerror = () => resolve([]);
+        });
+    },
+
+    /**
+     * Remove um registro fisicamente do banco
+     */
+    async delete(store, id) {
+        return new Promise((resolve, reject) => {
+            const tx = this.instance.transaction(store, "readwrite");
+            const req = tx.objectStore(store).delete(Number(id));
+            req.onsuccess = () => {
+                if (store === CONFIG_DB.STORES.MUNICIPES) this.updateCount();
+                resolve(true);
+            };
+            req.onerror = () => reject(false);
+        });
+    },
+
+    /**
+     * Atualiza o contador de população no cabeçalho do sistema
+     */
+    async updateCount() {
+        if (!this.instance) return;
+        const tx = this.instance.transaction(CONFIG_DB.STORES.MUNICIPES, "readonly");
+        const req = tx.objectStore(CONFIG_DB.STORES.MUNICIPES).count();
+        req.onsuccess = () => {
+            const el = document.getElementById('contagem');
+            if (el) el.innerText = `POPULAÇÃO LOCAL TOTAL: ${req.result} CIDADÃOS`;
+        };
+    }
+};

@@ -1,70 +1,202 @@
-/* 001: MOTOR DE UTILITARIOS ACS PRO */
+/* ==========================================================================
+   002: MÓDULO DE UTILITÁRIOS, MÁSCARAS E INTERFACE MODAL
+   DOCUMENTAÇÃO: CENTRALIZA A LÓGICA DE CÁLCULO EPIDEMIOLÓGICO E UI
+   ESTE ARQUIVO É OBRIGATÓRIO PARA O FUNCIONAMENTO DO REGISTRY E VISITS
+   ========================================================================== */
+
 window.Utils = {
-    sanitize: (s) => s ? s.toString().toUpperCase().trim() : "",
-    
-    /* 002: MASCARAS DE ENTRADA CONFORME DIRETRIZ 1 */
+
+    /* 001: SANEAMENTO DE TEXTO E PADRÃO SCREAMING CAPS (DIRETRIZ 1) */
+    sanitize(str) {
+        if (str === null || str === undefined) return "";
+        return str.toString().toUpperCase().trim();
+    },
+
+    /* 002: MOTOR DE MÁSCARAS DINÂMICAS (SISAB COMPLIANT) */
     masks: {
+        // Formato DD/MM/AAAA
         date: (v) => v.replace(/\D/g, '').replace(/(\d{2})(\d)/, '$1/$2').replace(/(\d{2})(\d)/, '$1/$2').slice(0, 10),
+        
+        // Formato 000.000.000-00
         cpf: (v) => v.replace(/\D/g, '').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})/, '$1-$2').slice(0, 14),
+        
+        // CNS possui 15 dígitos numéricos
+        cns: (v) => v.replace(/\D/g, '').slice(0, 15),
+        
+        // Formato (00) 00000-0000
         phone: (v) => v.replace(/\D/g, '').replace(/^(\d{2})(\d)/g, '($1) $2').replace(/(\d)(\d{4})$/, '$1-$2').slice(0, 15),
-        pa: (v) => v.replace(/\D/g, '').replace(/(\d{2})(\d)/, '$1/$2').slice(0, 5)
+        
+        // Pressão Arterial (Ex: 120/80)
+        pa: (v) => v.replace(/\D/g, '').replace(/(\d{2,3})(\d{2})/, '$1/$2').slice(0, 7),
+        
+        // Glicemia Capilar (HGT) - Apenas números
+        hgt: (v) => v.replace(/\D/g, '').slice(0, 3)
     },
 
-    /* 003: MOTOR DE CALCULO DE IDADE EM TEMPO REAL */
-    calculateAge(dob) {
-        if (!dob || dob.length < 10) return 0;
-        const [d, m, y] = dob.split('/').map(Number);
-        const b = new Date(y, m - 1, d);
-        const t = new Date();
-        let a = t.getFullYear() - b.getFullYear();
-        if (t.getMonth() < b.getMonth() || (t.getMonth() === b.getMonth() && t.getDate() < b.getDate())) a--;
-        return a;
+    /* 003: MOTOR DE CÁLCULO DE IDADE (DIRETRIZ 4) */
+    calculateAge(dateStr) {
+        if (!dateStr || dateStr.length < 10) return 0;
+        const parts = dateStr.split('/');
+        const birthDate = new Date(parts[2], parts[1] - 1, parts[0]);
+        const today = new Date();
+        
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age >= 0 ? age : 0;
     },
 
-    /* 004: MOTOR DE NAGAELE (DIRETRIZ 6) */
-    getGestationalInfo(dum) {
-        if (!dum || dum.length < 10) return null;
-        const [d, m, y] = dum.split('/').map(Number);
-        const dumDate = new Date(y, m - 1, d);
-        const diff = Math.floor((new Date() - dumDate) / (1000 * 60 * 60 * 24));
-        const weeks = Math.floor(diff / 7);
-        const days = diff % 7;
-        let dpp = new Date(dumDate); dpp.setDate(dpp.getDate() + 7); dpp.setMonth(dpp.getMonth() - 3); dpp.setFullYear(dpp.getFullYear() + 1);
-        return { res: `${weeks} SEMANAS E ${days} DIAS`, dpp: dpp.toLocaleDateString('pt-BR'), tri: weeks < 13 ? "1º TRIMESTRE" : (weeks < 27 ? "2º TRIMESTRE" : "3º TRIMESTRE") };
+    /* 004: MOTOR DE NAGAELE - LÓGICA GESTACIONAL (DIRETRIZ 6) */
+    getGestationalInfo(dumStr) {
+        if (!dumStr || dumStr.length < 10) return null;
+        
+        const parts = dumStr.split('/');
+        const dumDate = new Date(parts[2], parts[1] - 1, parts[0]);
+        const today = new Date();
+        
+        // Diferença em milissegundos convertida para dias
+        const diffTime = Math.abs(today - dumDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        const weeks = Math.floor(diffDays / 7);
+        const days = diffDays % 7;
+        
+        // Cálculo da DPP (Data Provável do Parto): DUM + 7 dias - 3 meses + 1 ano
+        let dppDate = new Date(dumDate);
+        dppDate.setDate(dppDate.getDate() + 7);
+        dppDate.setMonth(dppDate.getMonth() - 3);
+        dppDate.setFullYear(dppDate.getFullYear() + 1);
+        
+        let trimestre = "1º TRIMESTRE";
+        if (weeks >= 14 && weeks < 27) trimestre = "2º TRIMESTRE";
+        if (weeks >= 27) trimestre = "3º TRIMESTRE";
+
+        return {
+            semanas: weeks,
+            dias: days,
+            resultadoFormatado: `${weeks} SEMANAS E ${days} DIAS`,
+            dpp: dppDate.toLocaleDateString('pt-BR'),
+            tri: trimestre
+        };
     },
 
-    /* 005: MOTOR DE INTERFACE MODAL CUSTOMIZADO */
+    /* 005: VALIDADOR DE CAMPOS BLOQUEANTES (DIRETRIZ 4) */
+    checkMandatoryFields(data) {
+        const missing = [];
+        if (!data.nome) missing.push("NOME COMPLETO");
+        if (!data.nasc || data.nasc.length < 10) missing.push("DATA DE NASCIMENTO");
+        if (!data.rua) missing.push("LOGRADOURO");
+        if (!data.num) missing.push("NÚMERO");
+        if (!data.cpf) missing.push("CPF");
+        
+        return {
+            valid: missing.length === 0,
+            missing: missing
+        };
+    },
+
+    /* 006: MOTOR DE INTERFACE MODAL CUSTOMIZADO (VINCULADO AO OBJETO GLOBAL) */
     CustomModals: {
-        async show(t, txt, type = 'alert', options = []) {
+        /* 007: MÉTODO PRIVADO DE CONSTRUÇÃO DE OVERLAY */
+        _createOverlay() {
+            const existing = document.getElementById('sys-modal-overlay');
+            if (existing) existing.remove();
+
+            const overlay = document.createElement('div');
+            overlay.id = 'sys-modal-overlay';
+            overlay.className = 'modal-overlay'; // ESTILO DEFINIDO NO STYLE.CSS
+            document.body.appendChild(overlay);
+            return overlay;
+        },
+
+        /* 008: ALERTA TÉCNICO */
+        alert(message) {
             return new Promise(resolve => {
-                const overlay = document.createElement('div');
-                overlay.className = 'modal-overlay';
-                overlay.innerHTML = `
+                const ov = this._createOverlay();
+                ov.innerHTML = `
                     <div class="modal-content">
-                        <h3>${t}</h3>
-                        <p>${txt.replace(/\n/g, '<br>')}</p>
-                        ${type === 'prompt' ? '<input type="text" id="m-input" style="margin-bottom:15px">' : ''}
-                        ${type === 'select' ? `<select id="m-select" style="margin-bottom:15px">${options.map(o => `<option value="${o}">${o}</option>`).join('')}<option value="NOVO">CADASTRAR NOVO COMPLEMENTO...</option></select>` : ''}
-                        <div style="display:flex; gap:10px; justify-content:flex-end">
-                            ${type !== 'alert' ? '<button id="m-cancel" class="btn-outline" style="width:auto; padding:10px 20px">CANCELAR</button>' : ''}
-                            <button id="m-ok" class="btn-main" style="width:auto; padding:10px 20px">CONFIRMAR</button>
-                        </div>
+                        <h3 style="color:var(--primary)">AVISO DO SISTEMA</h3>
+                        <div style="margin: 20px 0; font-weight: bold;">${message}</div>
+                        <button class="btn btn-main" id="modal-close-btn">ENTENDIDO</button>
                     </div>`;
-                document.body.appendChild(overlay);
-                const btnOk = document.getElementById('m-ok');
-                const btnCan = document.getElementById('m-cancel');
-                btnOk.onclick = () => {
-                    let val = true;
-                    if (type === 'prompt') val = document.getElementById('m-input').value.toUpperCase();
-                    if (type === 'select') val = document.getElementById('m-select').value;
-                    overlay.remove(); resolve(val);
-                };
-                if (btnCan) btnCan.onclick = () => { overlay.remove(); resolve(null); };
+                document.getElementById('modal-close-btn').onclick = () => { ov.remove(); resolve(); };
             });
         },
-        alert: (m) => Utils.CustomModals.show("SISTEMA", m, 'alert'),
-        confirm: (m) => Utils.CustomModals.show("CONFIRMAR", m, 'confirm'),
-        prompt: (m) => Utils.CustomModals.show("ENTRADA", m, 'prompt'),
-        addressConflict: (t, txt, opt) => Utils.CustomModals.show(t, txt, 'select', opt)
+
+        /* 009: CONFIRMAÇÃO DE SAÍDA OU EXCLUSÃO */
+        confirm(message) {
+            return new Promise(resolve => {
+                const ov = this._createOverlay();
+                ov.innerHTML = `
+                    <div class="modal-content">
+                        <h3 style="color:var(--danger)">CONFIRMAÇÃO NECESSÁRIA</h3>
+                        <div style="margin: 20px 0;">${message}</div>
+                        <div class="grid-2">
+                            <button class="btn btn-outline" id="modal-no">NÃO</button>
+                            <button class="btn btn-main" id="modal-yes" style="background:var(--danger)">SIM, CONTINUAR</button>
+                        </div>
+                    </div>`;
+                document.getElementById('modal-no').onclick = () => { ov.remove(); resolve(false); };
+                document.getElementById('modal-yes').onclick = () => { ov.remove(); resolve(true); };
+            });
+        },
+
+        /* 010: MOTOR DE CONFLITO HABITACIONAL (DIRETRIZ 3) */
+        addressConflict(rua, num, complementos) {
+            return new Promise(resolve => {
+                const ov = this._createOverlay();
+                let optionsHtml = complementos.map(c => `<button class="btn btn-outline opt-addr" data-val="${c}">${c}</button>`).join('');
+                
+                ov.innerHTML = `
+                    <div class="modal-content" style="max-width: 500px;">
+                        <h3 style="color:var(--warning)">CONFLITO DE UNIDADE HABITACIONAL</h3>
+                        <p>O ENDEREÇO <b>${rua}, ${num}</b> JÁ POSSUI AS SEGUINTES CASAS CADASTRADAS:</p>
+                        <div style="max-height: 200px; overflow-y: auto; margin-bottom: 15px;">
+                            ${optionsHtml}
+                        </div>
+                        <p>OU DESEJA CADASTRAR UMA NOVA UNIDADE NESTE NÚMERO?</p>
+                        <button class="btn btn-main" id="modal-new-addr">CADASTRAR NOVO COMPLEMENTO</button>
+                        <button class="btn btn-sm btn-outline" id="modal-cancel-addr" style="margin-top:10px">CANCELAR OPERAÇÃO</button>
+                    </div>`;
+
+                // Selecionar existente
+                ov.querySelectorAll('.opt-addr').forEach(btn => {
+                    btn.onclick = () => { ov.remove(); resolve(btn.getAttribute('data-val')); };
+                });
+
+                // Criar novo
+                document.getElementById('modal-new-addr').onclick = () => { ov.remove(); resolve("NEW"); };
+                
+                // Cancelar
+                document.getElementById('modal-cancel-addr').onclick = () => { ov.remove(); resolve(null); };
+            });
+        },
+
+        /* 011: PROMPT PARA RESOLUÇÃO DE PENDÊNCIAS (DIRETRIZ 8) */
+        prompt(title, label) {
+            return new Promise(resolve => {
+                const ov = this._createOverlay();
+                ov.innerHTML = `
+                    <div class="modal-content">
+                        <h3 style="color:var(--primary)">${title}</h3>
+                        <label>${label}</label>
+                        <textarea id="modal-input-text" rows="4" style="width:100%; margin-top:10px;"></textarea>
+                        <div class="grid-2" style="margin-top:15px;">
+                            <button class="btn btn-outline" id="modal-cancel">CANCELAR</button>
+                            <button class="btn btn-main" id="modal-save">GRAVAR INFORMAÇÃO</button>
+                        </div>
+                    </div>`;
+                
+                document.getElementById('modal-cancel').onclick = () => { ov.remove(); resolve(null); };
+                document.getElementById('modal-save').onclick = () => { 
+                    const val = document.getElementById('modal-input-text').value;
+                    ov.remove(); 
+                    resolve(val.toUpperCase().trim()); 
+                };
+            });
+        }
     }
 };

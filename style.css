@@ -1,229 +1,49 @@
-/* 
- * 002: IDENTIDADE VISUAL E LAYOUT (CSS)
- * SISTEMA: ACS PRO V12.2 - OSASCO FIELD SYSTEM
- * 
- * Focado em alta legibilidade sob luz solar e usabilidade em dispositivos móveis.
- */
-
+/* 001: DESIGN TOKENS E VARIAVEIS GESTACIONAIS */
 :root {
-    --primary: #004a99;         /* Azul Oficial */
-    --primary-dark: #003366;
-    --secondary: #6c757d;       /* Cinza Ação */
-    --success: #218838;         /* Verde Salvar */
-    --danger: #d32f2f;          /* Vermelho Alerta */
-    --warning: #ffc107;         /* Amarelo Pendência */
-    --bg: #f0f2f5;              /* Fundo Neutro */
-    --white: #ffffff;
-    --gestante: #e83e8c;        /* Identificação Pink */
-    --idoso: #673ab7;           /* Identificação Roxo */
-    --saudemental: #e64a19;     /* Identificação Laranja */
-    --shadow: 0 4px 15px rgba(0,0,0,0.1);
-    --radius: 12px;
+    --primary: #004a99; --success: #218838; --warning: #ffc107; --danger: #d32f2f;
+    --gestante: #e83e8c; --idoso: #673ab7; --bg: #f0f2f5; --white: #ffffff;
 }
 
-/* 001: RESET E CONFIGURAÇÕES DE TOQUE */
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* 002: RESET E ACESSIBILIDADE MOBILE */
+* { box-sizing: border-box; text-transform: uppercase; } /* SCREAMING CAPS GLOBAL */
+body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--bg); user-select: none; }
 
-body { 
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
-    margin: 0; 
-    background: var(--bg); 
-    color: #222; 
-    line-height: 1.5;
-    user-select: none; /* Evita seleção acidental em campo */
-}
+header { background: var(--primary); color: var(--white); padding: 15px; text-align: center; position: sticky; top: 0; z-index: 1000; }
 
-/* 002: CABEÇALHO FIXO */
-header { 
-    background: var(--primary); 
-    color: var(--white); 
-    padding: 15px; 
-    text-align: center; 
-    position: sticky; 
-    top: 0; 
-    z-index: 1000; 
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2); 
-}
+.container { padding: 15px; max-width: 800px; margin: auto; padding-bottom: 160px; }
 
-header h2 { margin: 0; font-size: 18px; letter-spacing: 1px; }
-#contagem { font-size: 11px; opacity: 0.9; margin-top: 4px; font-weight: bold; }
+/* 003: CARDS E HIERARQUIA VISUAL */
+.card { background: var(--white); border-radius: 12px; padding: 18px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; border-left: 8px solid var(--primary); transition: transform 0.2s; }
+.card:active { transform: scale(0.98); }
 
-/* 003: CONTAINER PRINCIPAL */
-.container { 
-    padding: 15px; 
-    max-width: 800px; 
-    margin: auto; 
-    padding-bottom: 160px; /* Espaço para botão de salvar + navbar */
-}
-
-/* 004: SISTEMA DE CARDS */
-.card { 
-    background: var(--white); 
-    border-radius: var(--radius); 
-    padding: 18px; 
-    box-shadow: var(--shadow); 
-    margin-bottom: 20px; 
-    border-left: 8px solid var(--primary);
-    transition: transform 0.1s;
-}
-
-.card:active { transform: scale(0.99); }
-
-/* Variantes de Card por agravo */
 .card-gestante { border-left-color: var(--gestante) !important; }
 .card-idoso { border-left-color: var(--idoso) !important; }
-.card-pendencia { border-left-color: var(--warning) !important; }
 
-/* 005: FORMULÁRIOS E INPUTS */
-label { 
-    display: block; 
-    margin-top: 15px; 
-    font-weight: 800; 
-    font-size: 12px; 
-    color: #444; 
-    text-transform: uppercase; 
-}
+/* 004: BARRA GESTACIONAL (DIRETRIZ 6 - ACIMA DOS BADGES) */
+.gestante-info-box { background: #fff0f5; padding: 12px; border-radius: 8px; border: 1px solid #f8bbd0; margin: 10px 0; color: #c2185b; font-weight: bold; border-left: 5px solid var(--gestante); }
 
-input, select, textarea { 
-    width: 100%; 
-    min-height: 48px; 
-    padding: 12px; 
-    margin-top: 5px; 
-    border: 2px solid #ddd; 
-    border-radius: 10px; 
-    font-size: 16px; 
-    background: #fff;
-    text-transform: uppercase; /* Força visualização em maiúsculas */
-}
+.pendencia-ativa-no-card { background: #fffde7; border: 1px solid #ffd600; padding: 10px; border-radius: 8px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; animation: pulse 2s infinite; }
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
 
-input:focus, select:focus, textarea:focus { 
-    border-color: var(--primary); 
-    outline: none; 
-    background: #fdfdfd; 
-}
-
-/* 006: BOTÕES */
-.btn { 
-    padding: 15px; 
-    border: none; 
-    border-radius: 10px; 
-    font-size: 15px; 
-    font-weight: bold; 
-    cursor: pointer; 
-    width: 100%; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    text-transform: uppercase;
-    transition: filter 0.2s;
-}
-
-.btn:active { filter: brightness(1.2); }
-
+/* 005: BOTOES E UI KIT */
+.btn { padding: 15px; border: none; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; margin: 5px 0; }
 .btn-main { background: var(--primary); color: var(--white); }
 .btn-outline { background: var(--white); border: 2px solid var(--primary); color: var(--primary); }
+.btn-save { background: var(--success); color: var(--white); position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%); width: 92%; max-width: 760px; z-index: 1200; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
 
-/* BOTÃO DE SALVAR FIXO (CORRIGIDO PARA NÃO OBSTRUIR) */
-.btn-save { 
-    background: var(--success); 
-    color: var(--white); 
-    position: fixed; 
-    bottom: 85px; 
-    left: 50%; 
-    transform: translateX(-50%); 
-    width: 92%; 
-    max-width: 760px;
-    z-index: 1200; 
-    box-shadow: 0 -4px 15px rgba(0,0,0,0.2); 
-    height: 55px;
-}
+/* 006: MODAIS TIPO OSASCO */
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px; }
+.modal-content { background: var(--white); width: 100%; max-width: 450px; border-radius: 20px; padding: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
 
-.btn-sm { padding: 8px 12px; font-size: 12px; width: auto; margin: 4px; }
-.btn-icon { background: #eee; border-radius: 8px; padding: 10px; margin-left: 5px; border: 1px solid #ccc; }
-
-/* 007: COMPONENTES DE SAÚDE */
-.badge { 
-    padding: 5px 10px; 
-    border-radius: 5px; 
-    font-size: 10px; 
-    color: #fff; 
-    margin: 2px; 
-    font-weight: bold; 
-    display: inline-block; 
-}
-.bg-hiper { background: #c62828; }
+/* 007: BADGES DE AGRAVOS */
+.badge { padding: 5px 10px; border-radius: 5px; font-size: 10px; color: #fff; margin: 2px; font-weight: bold; display: inline-block; }
+.bg-hiper { background: #d32f2f; }
 .bg-dia { background: #333; }
 .bg-gest { background: var(--gestante); }
-.bg-sm { background: var(--saudemental); }
 .bg-idoso { background: var(--idoso); }
+.bg-sm { background: #e64a19; }
 
-.gestante-info-box { 
-    background: #fff0f5; 
-    padding: 12px; 
-    border-radius: 8px; 
-    border: 1px solid #f8bbd0; 
-    margin: 10px 0; 
-    color: #c2185b;
-    font-weight: bold;
-}
-
-/* 008: MODAIS (CORRIGIDO Z-INDEX 2000) */
-.modal-overlay { 
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
-    background: rgba(0,0,0,0.85); 
-    display: flex; align-items: center; justify-content: center; 
-    z-index: 2000; 
-    padding: 20px; 
-}
-
-.modal-content { 
-    background: var(--white); 
-    width: 100%; 
-    max-width: 450px; 
-    border-radius: 20px; 
-    padding: 25px; 
-    box-shadow: 0 15px 50px rgba(0,0,0,0.5); 
-}
-
-/* 009: BARRA DE NAVEGAÇÃO INFERIOR */
-.footer-nav { 
-    position: fixed; 
-    bottom: 0; left: 0; right: 0; 
-    background: var(--white); 
-    display: flex; 
-    border-top: 1px solid #ddd; 
-    padding: 10px 0; 
-    z-index: 1100; 
-}
-.nav-item { 
-    flex: 1; 
-    text-align: center; 
-    font-size: 11px; 
-    color: #666; 
-    font-weight: bold;
-}
-.nav-item.active { color: var(--primary); }
-
-/* 010: UTILITÁRIOS */
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 .hidden { display: none !important; }
-.info-label { font-size: 10px; color: #777; font-weight: bold; margin-bottom: 2px; }
-.info-valor { font-size: 15px; margin-bottom: 10px; }
-
-/* Animação para pendências críticas */
-@keyframes pulse-yellow {
-    0% { background-color: #fffde7; }
-    50% { background-color: #fff59d; }
-    100% { background-color: #fffde7; }
-}
-.pendencia-ativa-no-card { 
-    animation: pulse-yellow 2s infinite; 
-    border: 1px solid #ffd600;
-    padding: 10px;
-    border-radius: 8px;
-    margin-top: 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.footer-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--white); display: flex; border-top: 1px solid #ddd; padding: 12px 0; z-index: 1100; }
+.nav-item { flex: 1; text-align: center; font-size: 11px; color: #666; font-weight: bold; }

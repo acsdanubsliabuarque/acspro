@@ -1,85 +1,95 @@
-/* 001: MOTOR DE CADASTRO INDIVIDUAL E TERRITORIAL */
+/* 001: MOTOR DE REGISTRO E TERRITORIO OSASCO */
 window.Registry = {
     editingId: null,
 
-    /* 002: ATALHO PARA NOVO DOMICILIO (DIRETO PARA ABA ENDERECO) */
-    startNewDomicilio() {
-        this.startNew();
-        this.setStep(2); // Pula identificacao
+    setStep(n) {
+        document.querySelectorAll('[id^="passo-"]').forEach(d => d.classList.add('hidden'));
+        document.getElementById(`passo-${n}`).classList.remove('hidden');
+        window.scrollTo(0, 0);
     },
 
-    /* 003: INICIALIZA FORMULARIO LIMPO */
+    /* 002: INICIALIZA CADASTRO LIMPO */
     startNew() {
         this.editingId = null;
-        document.querySelectorAll('#tela-cadastro input, #tela-cadastro select, #tela-cadastro textarea').forEach(i => {
-            if (i.type === 'checkbox') i.checked = false;
-            else i.value = "";
+        document.querySelectorAll('#tela-cadastro input, #tela-cadastro select').forEach(i => {
+            if (i.type === 'checkbox') i.checked = false; else i.value = "";
         });
         document.getElementById('c-is-resp').value = "SIM";
-        this.toggleRelacao();
-        this.toggleDum();
-        this.setStep(1);
+        this.toggleRelacao(); this.toggleDum(); this.setStep(1);
         Nav.goTo('tela-cadastro');
     },
 
-    /* 004: LOGICA DE CONFLITO HABITACIONAL DE OSASCO (RUA+NUM+COMP) */
+    /* 003: ATALHO DE NOVO DOMICILIO (DIRETRIZ 3) */
+    startNewDomicilio() { this.startNew(); this.setStep(2); },
+
+    toggleDum() { document.getElementById('div-gestante').classList.toggle('hidden', !document.getElementById('ch-gest').checked); },
+    toggleRelacao() { document.getElementById('div-parentesco').classList.toggle('hidden', document.getElementById('c-is-resp').value === 'SIM'); },
+
+    /* 004: TRAVA DE CONFLITO DE ENDERECO (PROTOCOLO OSASCO) */
     async checkAddressConflict() {
         const rua = document.getElementById('c-rua').value;
         const num = document.getElementById('c-num').value.trim();
-        const compInput = document.getElementById('c-comp');
-
+        const comp = document.getElementById('c-comp');
         if (rua && num) {
-            const existentes = await DB.findAddressComplements(rua, num);
-            if (existentes.length > 0 && (!compInput.value || compInput.value === "CASA ÚNICA")) {
-                const escolha = await Utils.CustomModals.addressConflict("CONFLITO DE ENDEREÇO", "ESCOLHA O COMPLEMENTO EXISTENTE OU CRIE UM NOVO:", existentes);
-                if (escolha === "NOVO") { compInput.value = ""; compInput.focus(); }
-                else if (escolha) { compInput.value = escolha; }
-            } else if (existentes.length === 0 && !compInput.value) {
-                compInput.value = "CASA ÚNICA"; // INJECAO AUTOMATICA (DIRETRIZ 7)
+            const existentes = await DB.getByIndex("municipes", "rua", rua);
+            const filtrados = existentes.filter(p => p.num === num);
+            const complementos = [...new Set(filtrados.map(p => p.comp || "CASA ÚNICA"))];
+            
+            if (complementos.length > 0 && (!comp.value || comp.value === "CASA ÚNICA")) {
+                const esc = await Utils.CustomModals.addressConflict("UNIDADE HABITACIONAL", "ESTE ENDEREÇO JÁ POSSUI MORADORES. SELECIONE O COMPLEMENTO:", complementos);
+                if (esc === "NOVO") { comp.value = ""; comp.focus(); }
+                else if (esc) { comp.value = esc; }
+            } else if (complementos.length === 0 && !comp.value) {
+                comp.value = "CASA ÚNICA";
             }
         }
     },
 
-    /* 005: PERSISTENCIA COM INTEGRIDADE FAMILIAR */
+    /* 005: EDICAO DE CADASTRADOS */
+    async prepareEdit(id) {
+        const p = await DB.get("municipes", id);
+        this.editingId = p.id;
+        document.getElementById('c-nome').value = p.nome;
+        document.getElementById('c-nasc').value = p.nasc;
+        document.getElementById('c-nome-social').value = p.nomeSocial || "";
+        document.getElementById('c-cpf').value = p.cpf || "";
+        document.getElementById('c-rua').value = p.rua;
+        document.getElementById('c-num').value = p.num;
+        document.getElementById('c-comp').value = p.comp;
+        document.getElementById('ch-hiper').checked = p.hiper;
+        document.getElementById('ch-diab').checked = p.diab;
+        document.getElementById('ch-gest').checked = p.gest;
+        document.getElementById('c-dum').value = p.dum || "";
+        document.getElementById('ch-mental').checked = p.saudeMental;
+        this.toggleDum(); this.setStep(1); Nav.goTo('tela-cadastro');
+    },
+
+    /* 006: SALVAMENTO COM INTEGRIDADE DE RESPONSAVEL */
     async save() {
-        const data = {
-            nome: document.getElementById('c-nome').value,
+        const d = {
+            nome: Utils.sanitize(document.getElementById('c-nome').value),
             nasc: document.getElementById('c-nasc').value,
-            nomeSocial: document.getElementById('c-nome-social').value,
+            nomeSocial: Utils.sanitize(document.getElementById('c-nome-social').value),
             cpf: document.getElementById('c-cpf').value,
             rua: document.getElementById('c-rua').value,
             num: document.getElementById('c-num').value,
             comp: document.getElementById('c-comp').value || "CASA ÚNICA",
             isResp: document.getElementById('c-is-resp').value,
             relacao: document.getElementById('c-relacao').value,
-            gest: document.getElementById('ch-gest').checked,
-            dum: document.getElementById('c-dum').value,
             hiper: document.getElementById('ch-hiper').checked,
             diab: document.getElementById('ch-diab').checked,
+            gest: document.getElementById('ch-gest').checked,
+            dum: document.getElementById('c-dum').value,
             saudeMental: document.getElementById('ch-mental').checked,
-            acamado: document.getElementById('ch-acamado').checked,
-            obs: document.getElementById('c-obs').value,
-            respId: null 
+            idoso: (Utils.calculateAge(document.getElementById('c-nasc').value) >= 60)
         };
-
-        if (this.editingId) data.id = this.editingId;
-
-        /* 006: VALIDACAO DE CAMPOS BLOQUEANTES */
-        const v = Utils.checkMandatoryFields(data);
+        if (this.editingId) d.id = this.editingId;
+        
+        const v = Utils.checkMandatoryFields(d);
         if (!v.valid) return Utils.CustomModals.alert("CAMPOS OBRIGATÓRIOS: " + v.missing.join(", "));
-
-        try {
-            /* 007: VINCULO AUTOMATICO DE DEPENDENTES */
-            if (data.isResp === 'NAO') {
-                const moradores = await DB.getByIndex("municipes", "enderecoChave", [data.rua, data.num, data.comp]);
-                const chefe = moradores.find(m => m.isResp === 'SIM');
-                if (chefe) data.respId = chefe.id;
-            }
-
-            await DB.put("municipes", data);
-            await Utils.CustomModals.alert("DADOS GRAVADOS COM SUCESSO!");
-            Nav.goTo('tela-home', true);
-        } catch (e) { Utils.CustomModals.alert("ERRO NA GRAVAÇÃO: " + e.message); }
+        
+        await DB.put("municipes", d);
+        await Utils.CustomModals.alert("CIDADÃO GRAVADO COM SUCESSO!");
+        Nav.goTo('tela-home', true);
     }
-    // ... (Manter setStep, toggleDum, toggleRelacao e prepareEdit originais)
 };

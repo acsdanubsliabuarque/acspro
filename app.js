@@ -247,26 +247,85 @@ window.Backup = {
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
-                const data = JSON.parse(e.target.result);
-                const confirm = await Utils.CustomModals.confirm("ISSO IRÁ SOBREPOR OS DADOS ATUAIS. CONTINUAR?");
+                const rawData = JSON.parse(e.target.result);
+                const confirm = await Utils.CustomModals.confirm("DADOS ANTIGOS DETECTADOS. DESEJA CONVERTER E RESTAURAR?");
                 if (!confirm) return;
 
-                // Restauração segura com Promise.all
+                // 1. Identifica as fontes (m ou municipes / v ou visitas)
+                const oldM = rawData.m || rawData.municipes || [];
+                const oldV = rawData.v || rawData.visitas || [];
+
                 const promises = [];
-                if (data.municipes) data.municipes.forEach(x => promises.push(DB.put("municipes", x)));
-                if (data.visitas) data.visitas.forEach(x => promises.push(DB.put("visitas", x)));
-                if (data.arquivo_pendencias) data.arquivo_pendencias.forEach(x => promises.push(DB.put("arquivo_pendencias", x)));
+
+                // 2. Adaptador para Municipes (Converte de V12 para V12.2)
+                oldM.forEach(p => {
+                    const mappedP = {
+                        id: p.id,
+                        nome: p.nome ? p.nome.toUpperCase() : "",
+                        nasc: p.nasc || "",
+                        sexo: p.sexo ? p.sexo.toUpperCase() : "MASCULINO",
+                        raca: p.raca ? p.raca.toUpperCase() : "PARDA",
+                        mae: p.mae ? p.mae.toUpperCase() : "",
+                        pai: p.pai ? p.pai.toUpperCase() : "",
+                        cpf: p.cpf || "",
+                        cns: p.cns || "",
+                        tel: p.telprincipal || p.tel || "",
+                        nacionalidade: "BRASILEIRA",
+                        
+                        rua: p.rua || "",
+                        num: p.num || "",
+                        comp: p.comp || "CASA ÚNICA",
+                        ma: p.ma || "",
+                        seg: p.seg || "",
+                        
+                        isResp: p.isResp || (p.respId ? "NAO" : "SIM"),
+                        relacao: p.relacao || "",
+                        respId: p.respId || null,
+
+                        hiper: !!p.hiper,
+                        diab: !!p.diab,
+                        gest: p.gest === 1 || p.gest === true,
+                        dum: p.dum || "",
+                        saudeMental: p.mental || p.saudeMental || false,
+                        acamado: p.acam || p.acamado || false,
+                        fumante: p.fum || p.fumante || false,
+                        alcool: p.alcool || false,
+                        obs: p.obs || ""
+                    };
+                    promises.push(DB.put("municipes", mappedP));
+                });
+
+                // 3. Adaptador para Visitas
+                oldV.forEach(v => {
+                    const mappedV = {
+                        id: v.id,
+                        pacienteId: v.pacienteId,
+                        nome: v.nome ? v.nome.toUpperCase() : "",
+                        dataTS: v.dataTimestamp || v.dataTS || Date.now(),
+                        dataBR: v.dataISO ? new Date(v.dataISO).toLocaleDateString('pt-BR') : (v.dataBR || ""),
+                        turno: v.turno || "MANHÃ",
+                        motivos: v.motivos || "",
+                        relato: v.relato ? v.relato.toUpperCase() : "",
+                        pa: v.pa || "",
+                        hgt: v.hgt || "",
+                        pendencia: v.pendencia ? v.pendencia.toUpperCase() : "",
+                        resolvida: !!v.resolvida,
+                        relatoResolvido: v.relatoResolvido || "",
+                        dataResolvido: v.dataResolvido || ""
+                    };
+                    promises.push(DB.put("visitas", mappedV));
+                });
 
                 await Promise.all(promises);
-                alert("RESTAURAÇÃO CONCLUÍDA COM SUCESSO!");
+                alert("SUCESSO! " + promises.length + " REGISTROS IMPORTADOS E CONVERTIDOS.");
                 location.reload();
             } catch (err) {
-                alert("ERRO: ARQUIVO DE BACKUP INVÁLIDO OU CORROMPIDO.");
+                console.error(err);
+                alert("ERRO CRÍTICO NA RESTAURAÇÃO: Verifique o console.");
             }
         };
         reader.readAsText(file);
     },
-
     async exportCSV() {
         const visitas = await DB.getAll("visitas");
         // Cabeçalho com BOM para Excel reconhecer acentos

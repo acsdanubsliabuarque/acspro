@@ -1,257 +1,253 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <!-- 001: CONFIGURACOES DE CODIFICACAO E VISUALIZACAO MOBILE -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ACS PRO V12.2 - OSASCO FIELD EDITION</title>
-    
-    <!-- 002: IMPORTACAO DO MOTOR DE ESTILOS (ARQUIVO 003) -->
+    <title>ACS PRO - VERSÃO 12.0 ABSOLUTA</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- 003: CABECALHO FIXO COM INDICADOR DE POPULACAO (DIRETRIZ 4) -->
 <header>
-    <h2>ACS PRO V12.2 - OSASCO</h2>
-    <div id="contagem">INICIALIZANDO BANCO DE DADOS...</div>
+    <h2 style="margin:0">ACS PRO v12.0 ABSOLUTA</h2>
+    <div id="contagem" style="font-size: 10px; opacity: 0.8">Aguardando banco de dados...</div>
+    <span id="sync-status" class="badge bg-offline" style="margin-top: 5px;">ESTRUTURA DE DADOS LOCAL</span>
 </header>
 
 <div class="container">
-
-    <!-- 004: TELA HOME - PESQUISA E GESTAO DE DADOS -->
+    <!-- TELA HOME -->
     <div id="tela-home">
-        <div class="card" style="border-left-color: var(--secondary)">
-            <h3>BUSCA E LOCALIZAÇÃO</h3>
-            <label>NOME COMPLETO DO CIDADÃO</label>
-            <input type="text" id="h-nome" placeholder="PESQUISAR POR NOME..." autocomplete="off">
-            <button class="btn btn-main" onclick="UI.searchPessoa()">PESQUISAR NOME</button>
-            
-            <hr style="opacity:0.1; margin: 20px 0;">
-            
-            <label>FILTRAR POR ENDEREÇO (OSASCO)</label>
+        <div class="card">
+            <h3 style="margin-top:0">Pesquisar Munícipe</h3>
+            <input type="text" id="h-nome" placeholder="Nome completo ou parte...">
+            <button class="btn btn-main" onclick="UI.searchPessoa()">PESQUISAR POR NOME</button>
+            <hr style="margin:20px 0; opacity:0.1">
+            <label>Filtrar por Endereço Territorial</label>
             <select id="h-rua" class="select-ruas"></select>
             <div class="grid-2">
-                <input type="text" id="h-num" placeholder="NÚMERO">
-                <button class="btn btn-outline" onclick="UI.searchEndereco()">VER RUA</button>
+                <input type="text" id="h-num" placeholder="Nº">
+                <button class="btn btn-outline" style="margin:5px 0" onclick="UI.searchEndereco()">FILTRAR RUA</button>
             </div>
         </div>
-
-        <!-- 005: ATALHOS DE CADASTRAMENTO (DIRETRIZ 3) -->
+        <button class="btn btn-main" style="background:#673ab7" onclick="Registry.startNew()">+ NOVO CADASTRO INDIVIDUAL</button>
         <div class="grid-2">
-            <button class="btn btn-main" style="background:#4527a0" onclick="Registry.startNew()">+ INDIVIDUAL</button>
-            <button class="btn btn-main" style="background:#2e7d32" onclick="Registry.startNewDomicilio()">+ DOMICÍLIO</button>
+            <button class="btn btn-outline" onclick="Visits.viewPendencies()">PENDÊNCIAS GLOBAIS</button>
+            <button class="btn btn-outline" onclick="Registry.viewPregnant()">GESTANTES</button>
         </div>
-
-        <button class="btn btn-outline" onclick="Visits.viewPendencies()">PENDÊNCIAS ATIVAS</button>
-
-        <!-- 006: GESTAO DE BACKUP E EXPORTACAO (DIRETRIZ 2) -->
-        <div class="card" style="background:#eee; border-left:none; text-align:center;">
-            <h4 style="margin-top:0">GESTÃO DE DADOS (SISAB)</h4>
-            <div class="grid-3">
-                <button class="btn btn-sm btn-outline" onclick="Backup.createBackup()">BACKUP</button>
-                <button class="btn btn-sm btn-outline" onclick="Backup.exportCSV()">EXCEL</button>
-                <input type="file" id="file-input" style="display:none" onchange="Backup.restoreBackup(event)">
-                <button class="btn btn-sm btn-outline" onclick="document.getElementById('file-input').click()">IMPORTAR</button>
-            </div>
+        <div class="card" style="background:#f8f9fa; border:none; border-top: 4px solid var(--secondary);">
+            <h4 style="margin:0">Gestão e Segurança</h4>
+            <button class="btn btn-sm btn-outline" onclick="Backup.exportCSV()">Gerar Relatório Excel</button>
+            <button class="btn btn-sm btn-outline" onclick="Backup.createBackup()">Criar Backup do Sistema</button>
+            <label style="margin-top:10px">Restaurar de arquivo .json:</label>
+            <input type="file" id="file-input" style="font-size:11px" onchange="Backup.restoreBackup(event)">
         </div>
     </div>
 
-    <!-- 007: TELA DE RESULTADOS COM VIEW ENGINE TRIPLO (DIRETRIZ 9) -->
+    <!-- TELA RESULTADOS -->
     <div id="tela-resultados" class="hidden">
-        <div style="display: flex; gap: 5px; margin-bottom: 15px; overflow-x: auto; padding-bottom:5px;">
-            <button class="btn btn-sm btn-outline" onclick="UI.changeView('full')">MODO COMPLETO</button>
-            <button class="btn btn-sm btn-outline" onclick="UI.changeView('compact')">COMPACTO</button>
-            <button class="btn btn-sm btn-outline" onclick="UI.changeView('list')">LISTA</button>
-        </div>
         <div id="lista-resultados"></div>
-        <button class="btn btn-outline" onclick="Nav.goBack()">VOLTAR</button>
+        <button class="btn btn-outline" onclick="Nav.goBack()">Voltar</button>
+        <button class="btn btn-outline" onclick="Nav.goTo('tela-home', true)">Início</button>
     </div>
 
-    <!-- 008: TELA DE CADASTRO INTEGRADO (INDIVIDUAL + DOMICILIAR) -->
-    <div id="tela-cadastro" class="hidden">
-        <button class="btn btn-save" onclick="Registry.save()">CONCLUIR E GRAVAR TUDO</button>
+    <!-- TELA HISTÓRICO -->
+    <div id="tela-historico" class="hidden">
+        <h3 id="hist-nome-header"></h3>
+        <div id="lista-historico"></div>
+        <button class="btn btn-outline" onclick="Nav.goBack()">Voltar</button>
+    </div>
 
-        <!-- PASSO 1: IDENTIFICAÇÃO (FICHA INDIVIDUAL SISAB) -->
+    <!-- TELA CADASTRO -->
+    <div id="tela-cadastro" class="hidden">
         <div id="passo-1">
             <div class="card">
-                <h3>1. IDENTIFICAÇÃO INDIVIDUAL</h3>
-                <label>NOME COMPLETO *</label><input type="text" id="c-nome" placeholder="OBRIGATÓRIO">
-                <label>NOME SOCIAL</label><input type="text" id="c-nome-social">
+                <h3>1. Identificação do Cidadão</h3>
+                <label>Nome Completo *</label>
+                <input type="text" id="c-nome" placeholder="Obrigatório" onchange="AppState.markUnsaved()">
+                <label>Data de Nascimento *</label>
+                <input type="text" id="c-nasc" placeholder="dd/mm/aaaa" maxlength="10" onchange="AppState.markUnsaved()">
                 <div class="grid-2">
-                    <div><label>NASCIMENTO *</label><input type="text" id="c-nasc" placeholder="DD/MM/AAAA"></div>
-                    <div><label>SEXO</label><select id="c-sexo"><option value="MASCULINO">MASCULINO</option><option value="FEMININO">FEMININO</option></select></div>
+                    <div>
+                        <label>Sexo *</label>
+                        <select id="c-sexo" onchange="AppState.markUnsaved()">
+                            <option value="" disabled selected>Selecione...</option>
+                            <option value="Masculino">Masculino</option>
+                            <option value="Feminino">Feminino</option>
+                            <option value="Outro">Outro</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Raça / Cor *</label>
+                        <select id="c-raca" onchange="AppState.markUnsaved()">
+                            <option value="" disabled selected>Selecione...</option>
+                            <option value="BRANCA">BRANCA</option>
+                            <option value="PRETA">PRETA</option>
+                            <option value="PARDA">PARDA</option>
+                            <option value="AMARELA">AMARELA</option>
+                            <option value="INDÍGENA">INDÍGENA</option>
+                        </select>
+                    </div>
                 </div>
+                <label>Nome da Mãe</label>
+                <input type="text" id="c-mae" onchange="AppState.markUnsaved()">
+                <label>CPF</label>
+                <input type="text" id="c-cpf" placeholder="000.000.000-00" maxlength="14" onblur="Utils.validateCPFInterface()" onchange="AppState.markUnsaved()">
+                <div id="input-cpf-error" class="input-error-msg">CPF INVÁLIDO!</div>
+                <label>CNS (Cartão SUS)</label>
+                <input type="text" id="c-cns" inputmode="numeric" placeholder="15 dígitos" maxlength="15" onblur="Utils.validateCNSInterface()" onchange="AppState.markUnsaved()">
+                <div id="input-cns-error" class="input-error-msg">CNS INVÁLIDO!</div>
                 <div class="grid-2">
-                    <div><label>RAÇA/COR</label><select id="c-raca"><option value="BRANCA">BRANCA</option><option value="PRETA">PRETA</option><option value="PARDA">PARDA</option><option value="AMARELA">AMARELA</option><option value="INDÍGENA">INDÍGENA</option></select></div>
-                    <div><label>ETNIA</label><input type="text" id="c-etnia"></div>
+                    <div><label>Telefone Principal</label><input type="text" id="c-telprincipal" class="tel" placeholder="(00) 00000-0000" onchange="AppState.markUnsaved()"></div>
+                    <div><label>Telefone Recado</label><input type="text" id="c-telrecado" class="tel" placeholder="(00) 00000-0000" onchange="AppState.markUnsaved()"></div>
                 </div>
-                <label>NOME DA MÃE</label><input type="text" id="c-mae">
-                <label>NOME DO PAI</label><input type="text" id="c-pai">
-                <div class="grid-2">
-                    <div><label>CPF *</label><input type="text" id="c-cpf"></div>
-                    <div><label>CNS (SUS)</label><input type="text" id="c-cns" maxlength="15"></div>
-                </div>
-                <div class="grid-2">
-                    <div><label>NACIONALIDADE</label><select id="c-nacionalidade"><option value="BRASILEIRA">BRASILEIRA</option><option value="ESTRANGEIRA">ESTRANGEIRA</option></select></div>
-                    <div><label>CELULAR</label><input type="text" id="c-tel"></div>
-                </div>
-                <label>ESCOLARIDADE</label>
-                <select id="c-escolaridade">
-                    <option value="ANALFABETO">ANALFABETO</option>
-                    <option value="FUNDAMENTAL">ENSINO FUNDAMENTAL</option>
-                    <option value="MEDIO">ENSINO MÉDIO</option>
-                    <option value="SUPERIOR">ENSINO SUPERIOR</option>
-                    <option value="NAO_INFORMADO">NÃO INFORMADO</option>
-                </select>
             </div>
-            <button class="btn btn-outline" onclick="Registry.setStep(2)">LOGRADOURO E MORADIA >></button>
+            <button class="btn btn-main" onclick="Registry.nextStep(2)">Endereço e Vínculo >></button>
+            <div class="grid-2">
+                <button class="btn btn-danger hidden" id="btn-delete-patient" onclick="Registry.deletePatient()">Excluir Cadastro</button>
+                <button class="btn btn-outline" onclick="Nav.confirmExit('tela-home')">Cancelar</button>
+            </div>
         </div>
 
-        <!-- PASSO 2: ENDEREÇO E DOMICÍLIO (FICHA DOMICILIAR SISAB) -->
         <div id="passo-2" class="hidden">
             <div class="card">
-                <h3>2. LOGRADOURO E FAMÍLIA</h3>
-                <label>RUA / LOGRADOURO *</label>
-                <select id="c-rua" class="select-ruas" onchange="Registry.checkAddressConflict()"></select>
-                <div class="grid-2">
-                    <div><label>NÚMERO *</label><input type="text" id="c-num" onblur="Registry.checkAddressConflict()"></div>
-                    <div><label>COMPLEMENTO</label><input type="text" id="c-comp" placeholder="CASA 1, FUNDOS, ETC"></div>
+                <h3>2. Localização e Família</h3>
+                <label>Rua (Logradouro)</label>
+                <select id="c-rua" class="select-ruas" onchange="AppState.markUnsaved()"></select>
+                <div class="grid-3">
+                    <div><label>Nº *</label><input type="text" id="c-num" onchange="AppState.markUnsaved()"></div>
+                    <div><label>Microárea</label><input type="text" id="c-ma" maxlength="2" placeholder="00" onchange="AppState.markUnsaved()"></div>
+                    <div><label>Segmento</label><input type="text" id="c-seg" maxlength="1" placeholder="0" onchange="AppState.markUnsaved()"></div>
                 </div>
+                <label>Complemento</label>
+                <input type="text" id="c-comp" placeholder="Ex: Fundos / Casa 2" onchange="AppState.markUnsaved()">
                 <hr>
-                <label>ESTE CIDADÃO É O CHEFE DA FAMÍLIA?</label>
-                <select id="c-is-resp" onchange="Registry.toggleRelacao()"><option value="SIM">SIM (RESPONSÁVEL FAMILIAR)</option><option value="NAO">NÃO (DEPENDENTE)</option></select>
-                <div id="div-parentesco" class="hidden">
-                    <label>PARENTESCO COM O CHEFE</label>
-                    <select id="c-relacao">
-                        <option value="CÔNJUGE">CÔNJUGE / COMPANHEIRO(A)</option>
-                        <option value="FILHO(A)">FILHO(A)</option>
-                        <option value="PAI/MÃE">PAI / MÃE</option>
-                        <option value="IRMÃO/IRMÃ">IRMÃO / IRMÃ</option>
-                        <option value="OUTRO">OUTRO PARENTE</option>
-                        <option value="NAO_PARENTE">NÃO PARENTE</option>
+                <label>O cidadão é o Responsável Familiar? (Apenas 1 por casa)</label>
+                <select id="c-is-resp" onchange="Registry.toggleRelation(); AppState.markUnsaved()">
+                    <option value="SIM">SIM, ELE É O CHEFE DA FAMÍLIA</option>
+                    <option value="NAO">NÃO, É DEPENDENTE</option>
+                </select>
+                <div id="div-relacao" class="hidden">
+                    <label>Vínculo com o Responsável</label>
+                    <select id="c-relacao" onchange="AppState.markUnsaved()">
+                        <option value="Cônjuge/Companheiro">Cônjuge / Companheiro(a)</option>
+                        <option value="Filho(a)">Filho(a)</option>
+                        <option value="Enteado(a)">Enteado(a)</option>
+                        <option value="Neto(a)/Bisneto(a)">Neto(a) / Bisneto(a)</option>
+                        <option value="Pai/Mãe">Pai / Mãe</option>
+                        <option value="Sogro(a)">Sogro(a)</option>
+                        <option value="Irmão/Irmã">Irmão / Irmã</option>
+                        <option value="Genro/Nora">Genro / Nora</option>
+                        <option value="Outro parente">Outro parente</option>
+                        <option value="Não parente">Não parente</option>
                     </select>
-                </div>
-                <hr>
-                <label>SITUAÇÃO DE MORADIA</label>
-                <div class="grid-2">
-                    <div><label>TIPO IMÓVEL</label><select id="c-tipo-imovel"><option value="CASA">CASA</option><option value="APARTAMENTO">APARTAMENTO</option><option value="COMODO">CÔMODO</option></select></div>
-                    <div><label>ÁGUA</label><select id="c-agua"><option value="REDE">REDE ENCANADA</option><option value="POCO">POÇO / NASCENTE</option></select></div>
-                </div>
-                <div class="grid-2">
-                    <div><label>ESGOTO</label><select id="c-esgoto"><option value="REDE">REDE COLETORA</option><option value="FOSSA">FOSSA SÉPTICA</option></select></div>
-                    <div><label>LIXO</label><select id="c-lixo"><option value="COLETA">COLETA REGULAR</option><option value="QUEIMADO">QUEIMADO / ENTERRADO</option></select></div>
+                    <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 8px;">
+                        <label style="margin-top:0; color:var(--primary);">Vincular Responsável Existente</label>
+                        <div class="grid-2">
+                            <input type="text" id="b-resp-nome" placeholder="Nome">
+                            <input type="text" id="b-resp-nasc" placeholder="Nasc." maxlength="10">
+                        </div>
+                        <button class="btn btn-outline btn-sm" style="width: 100%; margin-top: 10px;" onclick="Registry.searchResponsible()">🔍 LOCALIZAR CHEFE DE FAMÍLIA</button>
+                        <div id="lista-resp-resultados" style="margin-top: 10px;"></div>
+                        <input type="hidden" id="c-resp-id">
+                        <div id="resp-selecionado" class="hidden" style="margin-top: 15px; padding: 10px; background: #d4edda; border-radius: 8px; border-left: 4px solid var(--success); font-size: 13px;">
+                            <strong>Responsável Vinculado:</strong> <br>
+                            <span id="txt-resp-selecionado"></span>
+                            <button class="btn btn-sm btn-danger" style="margin-top: 8px; width:100%" onclick="Registry.removeResponsible()">LIMPAR / DESVINCULAR</button>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <button class="btn btn-outline" onclick="Registry.setStep(3)">CONDIÇÕES DE SAÚDE >></button>
+            <button class="btn btn-outline" onclick="Registry.setStep(1)">Voltar</button>
+            <button class="btn btn-main" onclick="Registry.nextStep(3)">Condições de Saúde >></button>
         </div>
 
-        <!-- PASSO 3: EPIDEMIOLOGIA (19 AGRAVOS E-SUS/SISAB) -->
         <div id="passo-3" class="hidden">
             <div class="card">
-                <h3>3. MONITORAMENTO DE SAÚDE</h3>
-                <div style="display: grid; gap: 8px;">
-                    <label class="check-box"><input type="checkbox" id="ch-hiper"> HIPERTENSÃO ARTERIAL</label>
-                    <label class="check-box"><input type="checkbox" id="ch-diab"> DIABETES MELLITUS</label>
-                    <label class="check-box"><input type="checkbox" id="ch-gest" onchange="Registry.toggleDum()"> GESTANTE</label>
-                    <div id="div-gestante" class="hidden" style="padding:10px; background:var(--bg); border-radius:8px;">
-                        <label>DUM (ÚLTIMA MENSTRUAÇÃO)</label><input type="text" id="c-dum" placeholder="DD/MM/AAAA">
-                    </div>
-                    <label class="check-box"><input type="checkbox" id="ch-mental"> SAÚDE MENTAL</label>
-                    <label class="check-box"><input type="checkbox" id="ch-acamado"> ACAMADO / DOMICILIADO</label>
-                    <label class="check-box"><input type="checkbox" id="ch-deficiencia"> POSSUI DEFICIÊNCIA</label>
-                    <label class="check-box"><input type="checkbox" id="ch-fumante"> FUMANTE</label>
-                    <label class="check-box"><input type="checkbox" id="ch-alcool"> USO DE ÁLCOOL</label>
-                    <label class="check-box"><input type="checkbox" id="ch-drogas"> USO DE DROGAS</label>
-                    <label class="check-box"><input type="checkbox" id="ch-avc"> JÁ TEVE AVC/DERRAME</label>
-                    <label class="check-box"><input type="checkbox" id="ch-infarto"> JÁ TEVE INFARTO</label>
-                    <label class="check-box"><input type="checkbox" id="ch-resp"> DOENÇA RESPIRATÓRIA</label>
-                    <label class="check-box"><input type="checkbox" id="ch-renal"> DOENÇA RENAL</label>
-                    <label class="check-box"><input type="checkbox" id="ch-cancer"> CÂNCER</label>
-                    <label class="check-box"><input type="checkbox" id="ch-hans"> HANSENÍASE</label>
-                    <label class="check-box"><input type="checkbox" id="ch-tb"> TUBERCULOSE</label>
-                    <label class="check-box"><input type="checkbox" id="ch-internacao"> INTERNAÇÃO RECENTE (12M)</label>
-                    <label class="check-box"><input type="checkbox" id="ch-puerperio"> PUERPÉRIO (ATÉ 42 DIAS)</label>
+                <h3>3. Condições de Saúde e Acompanhamentos</h3>
+                <div class="grid-check">
+                    <label class="check-box"><input type="checkbox" id="ch-hiper" onchange="AppState.markUnsaved()"> HIPERTENSÃO ARTERIAL</label>
+                    <label class="check-box"><input type="checkbox" id="ch-diab" onchange="AppState.markUnsaved()"> DIABETES MELLITUS</label>
+                    <label class="check-box"><input type="checkbox" id="ch-gest" onchange="Registry.toggleDUM(); AppState.markUnsaved()"> GESTANTE</label>
+                    <div id="div-dum" class="hidden" style="padding-left: 20px; border-left: 2px solid var(--gestante-pink);">
+                        <label>DUM (DATA DA ÚLTIMA MENSTRUAÇÃO)</label>
+                        <input type="text" id="c-dum" placeholder="dd/mm/aaaa" maxlength="10" onchange="AppState.markUnsaved()">
+                    </div>                  
+                    <label class="check-box"><input type="checkbox" id="ch-acam" onchange="AppState.markUnsaved()"> ACAMADO / DOMICILIADO</label>
+                    <label class="check-box"><input type="checkbox" id="ch-def" onchange="AppState.markUnsaved()"> POSSUI DEFICIÊNCIA</label>
+                    <label class="check-box"><input type="checkbox" id="ch-fum" onchange="AppState.markUnsaved()"> FUMANTE</label>
+                    <label class="check-box"><input type="checkbox" id="ch-alcool" onchange="AppState.markUnsaved()"> USO DE ÁLCOOL</label>
+                    <label class="check-box"><input type="checkbox" id="ch-drogas" onchange="AppState.markUnsaved()"> OUTRAS DROGAS</label>
+                    <label class="check-box"><input type="checkbox" id="ch-avc" onchange="AppState.markUnsaved()"> TEVE AVC/DERRAME</label>
+                    <label class="check-box"><input type="checkbox" id="ch-infarto" onchange="AppState.markUnsaved()"> TEVE INFARTO</label>
+                    <label class="check-box"><input type="checkbox" id="ch-resp" onchange="AppState.markUnsaved()"> DOENÇA RESPIRATÓRIA (ASMA/DPOC)</label>
+                    <label class="check-box"><input type="checkbox" id="ch-renal" onchange="AppState.markUnsaved()"> DOENÇA RENAL CRÔNICA</label>
+                    <label class="check-box"><input type="checkbox" id="ch-cancer" onchange="AppState.markUnsaved()"> CÂNCER</label>
+                    <label class="check-box"><input type="checkbox" id="ch-hans" onchange="AppState.markUnsaved()"> HANSENÍASE</label>
+                    <label class="check-box"><input type="checkbox" id="ch-tb" onchange="AppState.markUnsaved()"> TUBERCULOSE</label>
+                    <label class="check-box"><input type="checkbox" id="ch-mental" onchange="AppState.markUnsaved()"> SAÚDE MENTAL / TRANSTORNO</label>
                 </div>
-                <label>OBSERVAÇÕES PERMANENTES</label>
-                <textarea id="c-obs" rows="3"></textarea>
+                <label>Notas Permanentes (Aparecem em todas as visitas)</label>
+                <textarea id="c-obs" rows="3" placeholder="Ex: Alergias graves, pontos de referência..." onchange="AppState.markUnsaved()"></textarea>
             </div>
-            <button class="btn btn-outline" onclick="Registry.setStep(2)"><< VOLTAR AO ENDEREÇO</button>
+            <button class="btn btn-outline" onclick="Registry.setStep(2)">Voltar</button>
+            <button class="btn btn-save" onclick="Registry.save()">FINALIZAR E GRAVAR NO SISTEMA</button>
         </div>
     </div>
 
-    <!-- 009: TELA DE REGISTRO DE VISITA (FICHA DE VISITA SISAB) -->
+    <!-- TELA VISITA -->
     <div id="tela-visita" class="hidden">
-        <div class="card">
-            <h3 id="v-nome-label">VISITA DOMICILIAR</h3>
-            
-            <!-- LISTA DE FAMILIARES PARA VISITA EM CADEIA (DIRETRIZ 7) -->
-            <div id="v-familiares-area"></div>
-            
-            <div class="grid-2">
-                <div><label>DATA</label><input type="text" id="v-data" readonly></div>
-                <div><label>TURNO</label><select id="v-turno"><option value="MANHÃ">MANHÃ</option><option value="TARDE">TARDE</option><option value="NOITE">NOITE</option></select></div>
-            </div>
-            
-            <label>DESFECHO DA VISITA</label>
-            <select id="v-desfecho">
-                <option value="VISITA REALIZADA">VISITA REALIZADA</option>
-                <option value="RECUSADA">RECUSADA</option>
-                <option value="AUSENTE">AUSENTE</option>
-            </select>
-
-            <label>MOTIVOS DA VISITA (SISAB)</label>
-            <div style="max-height: 150px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 8px;">
-                <label><input type="checkbox" name="v-motivo" value="CADASTRAMENTO/ATUALIZAÇÃO"> CADASTRAMENTO/ATUALIZAÇÃO</label>
-                <label><input type="checkbox" name="v-motivo" value="VISITA PERIÓDICA"> VISITA PERIÓDICA</label>
-                <label><input type="checkbox" name="v-motivo" value="BUSCA ATIVA"> BUSCA ATIVA</label>
-                <label><input type="checkbox" name="v-motivo" value="ACOMP. GESTANTE"> ACOMP. GESTANTE</label>
-                <label><input type="checkbox" name="v-motivo" value="ACOMP. HIPERTENSO"> ACOMP. HIPERTENSO</label>
-                <label><input type="checkbox" name="v-motivo" value="ACOMP. DIABÉTICO"> ACOMP. DIABÉTICO</label>
-                <label><input type="checkbox" name="v-motivo" value="SINAIS VITAIS"> AFERIÇÃO SINAIS VITAIS</label>
-            </div>
-
-            <div class="grid-2" style="background:#f1f8e9; padding:10px; border-radius:10px; margin-top:10px;">
-                <div><label>P.A. (S/D)</label><input type="text" id="v-pa" placeholder="12/8"></div>
-                <div><label>HGT (GLICEMIA)</label><input type="text" id="v-hgt" placeholder="000"></div>
-            </div>
-            <div class="grid-2">
-                <div><label>PESO (KG)</label><input type="text" id="v-peso"></div>
-                <div><label>ESTATURA (CM)</label><input type="text" id="v-estatura"></div>
-            </div>
-
-            <label>RELATO DA EVOLUÇÃO *</label>
-            <textarea id="v-relato" rows="4" placeholder="O QUE FOI OBSERVADO NESTA VISITA?"></textarea>
-            
-            <label>ADICIONAR PENDÊNCIA / ALERTA?</label>
-            <input type="text" id="h-pendencia" id="v-pendencia" placeholder="EX: AGENDAR EXAME DE SANGUE">
+        <div id="v-alerta" class="card" style="background:#fff3cd; border-left-color:var(--warning)"></div>
+        <div id="v-alerta-gestante" class="hidden"></div>
+        <div id="v-familiares" class="card hidden" style="border-left-color:#17a2b8;">
+            <h4 style="margin:0 0 10px 0;">Núcleo Familiar Vinculado</h4>
+            <div id="lista-familiares-vinculados"></div>
         </div>
-        <button class="btn btn-save" onclick="Visits.save()">SALVAR VISITA NO PRONTUÁRIO</button>
-        <button class="btn btn-outline" onclick="Nav.confirmExit('tela-home')">CANCELAR</button>
+        <div class="card">
+            <h3>Registrar Visita: <span id="v-nome-txt"></span></h3>
+            <p id="v-timer-info" style="font-size: 11px; color: var(--secondary); margin-top: -10px;"></p>
+            <div class="secao-titulo">MOTIVOS DA VISITA (e-SUS APS)</div>
+            <div class="grid-check">
+                <label class="check-box"><input type="checkbox" name="motivo" value="Cadastramento/Atualização"> Cadastramento / Atualização</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Visita periódica"> Visita periódica</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Busca Ativa: Vacina"> Busca Ativa: Vacina</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Busca Ativa: Bolsa Família"> Busca Ativa: Bolsa Família</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="SISVAN / Pesagem"> SISVAN (Peso / Altura)</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Acomp: Gestante"> Acompanhamento: Gestante</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Acomp: Puerpera"> Acompanhamento: Puerpera</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Acomp: Hipertenso"> Acompanhamento: Hipertenso</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Acomp: Diabético"> Acompanhamento: Diabético</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Acomp: Acamado"> Acompanhamento: Acamado</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Acomp: Egresso"> Egresso de Internação</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Busca Ativa: Consulta/Exame"> Busca Ativa: Consulta / Exame</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Orientação/Prevenção"> Orientação / Prevenção</label>
+                <label class="check-box"><input type="checkbox" name="motivo" value="Outros"> Outros motivos</label>
+            </div>
+            <label>Relato da Evolução</label>
+            <textarea id="v-relato" rows="5" placeholder="Descreva o que ocorreu na visita..."></textarea>
+            <label>Gerar Pendência?</label>
+            <input type="text" id="v-pendencia" placeholder="Ex: Pendente comprovante de endereço">
+        </div>
+        <button class="btn btn-save" onclick="Visits.save()">SALVAR VISITA NO DISPOSITIVO</button>
+        <button class="btn btn-outline" onclick="Nav.confirmExit('voltar')">CANCELAR</button>
     </div>
-
-    <!-- 010: TELA DE HISTORICO TÉCNICO -->
-    <div id="tela-historico" class="hidden">
-        <h3 id="hist-nome">HISTÓRICO</h3>
-        <div id="lista-historico"></div>
-        <button class="btn btn-outline" onclick="Nav.goBack()">VOLTAR</button>
-    </div>
-
 </div>
 
-<!-- 011: BARRA DE NAVEGACAO INFERIOR PERSISTENTE -->
 <nav class="footer-nav">
-    <div class="nav-item" onclick="Nav.goTo('tela-home', true)">INÍCIO</div>
-    <div class="nav-item" onclick="Visits.viewPendencies()">PENDÊNCIAS</div>
-    <div class="nav-item" onclick="Nav.goBack()">VOLTAR</div>
+    <div class="nav-item active" onclick="Nav.confirmExit('tela-home')">INÍCIO</div>
+    <div class="nav-item" onclick="Nav.confirmExit('pendencias')">PENDÊNCIAS</div>
+    <div class="nav-item" onclick="Nav.confirmExit('voltar')">VOLTAR</div>
 </nav>
 
-<!-- 012: IMPORTACAO EM ORDEM TECNICA DE DEPENDENCIA (CRÍTICO) -->
-<script src="database.js"></script>
-<script src="utils.js"></script>
-<script src="registry.js"></script>
-<script src="visits.js"></script>
-<script src="app.js"></script>
+<!-- Scripts na Ordem de Dependência -->
+<script src="scripts/state.js"></script>
+<script src="scripts/db.js"></script>
+<script src="scripts/utils.js"></script>
+<script src="scripts/nav.js"></script>
+<script src="scripts/ui.js"></script>
+<script src="scripts/registry.js"></script>
+<script src="scripts/visits.js"></script>
+<script src="scripts/backup.js"></script>
+<script src="scripts/main.js"></script>
 
 </body>
 </html>

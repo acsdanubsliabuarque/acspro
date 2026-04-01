@@ -1,279 +1,69 @@
-/* ==========================================================================
-   003: IDENTIDADE VISUAL E LAYOUT (CSS V12.2)
-   DOCUMENTAÇÃO: DESIGN TOKENS PARA SISTEMA DE CAMPO ACS PRO OSASCO
-   ESTE ARQUIVO FORÇA O PADRÃO SCREAMING CAPS E ACESSIBILIDADE DE TOQUE
-   ========================================================================== */
-
-/* 001: DEFINICAO DE VARIAVEIS GLOBAIS (DESIGN TOKENS) */
 :root {
-    --primary: #004a99;         /* AZUL OFICIAL ACS PRO */
-    --primary-dark: #003366;
-    --secondary: #6c757d;       /* CINZA ACAO */
-    --success: #218838;         /* VERDE SALVAMENTO */
-    --danger: #d32f2f;          /* VERMELHO ALERTA CRITICO */
-    --warning: #ffc107;         /* AMARELO PENDENCIA ATIVA */
-    --bg: #f4f6f9;              /* CINZA FUNDO NEUTRO */
-    --white: #ffffff;
-    --gestante-pink: #e83e8c;   /* ROSA GESTACIONAL (SISAB) */
-    --idoso-purple: #673ab7;    /* ROXO IDOSO (60+) */
-    --mental-orange: #e64a19;   /* LARANJA SAUDE MENTAL */
-    --shadow: 0 4px 15px rgba(0,0,0,0.15);
-    --radius: 12px;
+    --primary: #004a99; --secondary: #6c757d; --success: #218838;
+    --danger: #d32f2f; --warning: #ffc107; --bg: #f0f2f5;
+    --gestante-pink: #e83e8c;
 }
 
-/* 002: RESET E CONFIGURACOES TECNICAS DE RENDERIZACAO */
-* { 
-    box-sizing: border-box; 
-    -webkit-tap-highlight-color: transparent; 
-    text-transform: uppercase; /* DIRETRIZ 1: PADRAO SCREAMING CAPS */
-}
+body { font-family: -apple-system, system-ui, sans-serif; margin: 0; background: var(--bg); color: #333; -webkit-font-smoothing: antialiased; }
+header { background: var(--primary); color: white; padding: 15px; text-align: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+.container { padding: 15px; max-width: 600px; margin: auto; padding-bottom: 100px; }
 
-body { 
-    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-    margin: 0; 
-    background: var(--bg); 
-    color: #212529; 
-    line-height: 1.4;
-    user-select: none; /* EVITA SELECAO ACIDENTAL EM CAMPO */
-}
+input[type="text"], textarea, select { text-transform: uppercase; }
 
-/* 003: CABECALHO FIXO (STICKY HEADER) */
-header { 
-    background: var(--primary); 
-    color: var(--white); 
-    padding: 15px; 
-    text-align: center; 
-    position: sticky; 
-    top: 0; 
-    z-index: 1000; 
-    box-shadow: 0 2px 10px rgba(0,0,0,0.3); 
-}
+.card { background: white; border-radius: 12px; padding: 18px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; border-left: 6px solid var(--primary); }
+.card-gestante { border-left-color: var(--gestante-pink); }
+.card-pendencia { border-left-color: var(--warning); }
+.card-pendencia.resolvida { border-left-color: var(--success); opacity: 0.8; }
+.card-historico { border-left-color: var(--secondary); background: #f9f9f9; margin-bottom: 10px; font-size: 14px; border-left-width: 4px; }
+.card-familiar { border-left: 4px solid #17a2b8; background: #f8fdff; padding: 10px; margin-top: 5px; font-size: 13px; }
 
-header h2 { margin: 0; font-size: 18px; letter-spacing: 1px; }
-#contagem { font-size: 11px; opacity: 0.9; margin-top: 5px; font-weight: bold; }
+.btn { padding: 16px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; margin: 8px 0; display: flex; align-items: center; justify-content: center; }
+.btn-main { background: var(--primary); color: white; }
+.btn-outline { background: white; border: 2px solid var(--primary); color: var(--primary); }
+.btn-save { background: var(--success); color: white; }
+.btn-danger { background: var(--danger); color: white; }
+.btn-sm { padding: 8px; font-size: 12px; width: auto; margin: 2px; display: inline-flex; }
+.btn-xs { padding: 4px 8px; font-size: 10px; width: auto; margin: 2px; }
 
-/* 004: CONTAINER PRINCIPAL COM AREA DE DESCANSO PARA NAVBAR */
-.container { 
-    padding: 15px; 
-    max-width: 800px; 
-    margin: auto; 
-    padding-bottom: 160px; /* ESPACO PARA BOTAO SALVAR + NAVBAR */
-}
+label { display: block; margin-top: 12px; font-weight: bold; font-size: 13px; color: #555; }
+input, select, textarea { width: 100%; padding: 14px; margin-top: 5px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; background: white; }
 
-/* 005: SISTEMA DE CARDS INDIVIDUAIS (MODO FULL) */
-.card { 
-    background: var(--white); 
-    border-radius: var(--radius); 
-    padding: 20px; 
-    box-shadow: var(--shadow); 
-    margin-bottom: 20px; 
-    border-left: 10px solid var(--primary); 
-    position: relative;
-    transition: transform 0.2s ease;
-}
-
-.card:active { transform: scale(0.98); }
-
-/* 006: VARIANTES DE CARDS POR AGRAVO (DIRETRIZ 5) */
-.card-gestante { border-left-color: var(--gestante-pink) !important; }
-.card-idoso { border-left-color: var(--idoso-purple) !important; }
-.card-pendencia { border-left-color: var(--warning) !important; }
-
-/* 007: ELEMENTO DE INFORMACAO GESTACIONAL (DIRETRIZ 6) */
-.gestante-info-box { 
-    background: #fff0f5; 
-    color: #c2185b; 
-    padding: 15px; 
-    border-radius: 10px; 
-    font-size: 14px; 
-    margin: 12px 0; 
-    border: 1px solid #f8bbd0; 
-    font-weight: bold;
-    border-left: 5px solid var(--gestante-pink);
-}
-
-/* 008: QUADRO DE PENDENCIAS NO CARD (ANIMAÇÃO PULSANTE) */
-.pendencia-ativa-no-card { 
-    background: #fffde7; 
-    border: 2px solid var(--warning); 
-    padding: 12px; 
-    border-radius: 10px; 
-    margin-top: 12px; 
-    font-size: 13px; 
-    color: #5d4037; 
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    animation: pulse-alert 2s infinite;
-}
-
-@keyframes pulse-alert {
-    0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4); }
-    70% { box-shadow: 0 0 0 10px rgba(255, 193, 7, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
-}
-
-/* 009: BOTOES DE INTERFACE (UI KIT) */
-.btn { 
-    padding: 16px; 
-    border: none; 
-    border-radius: 12px; 
-    font-size: 15px; 
-    font-weight: bold; 
-    cursor: pointer; 
-    width: 100%; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    margin: 8px 0;
-    transition: filter 0.2s;
-}
-
-.btn:active { filter: brightness(1.2); }
-
-.btn-main { background: var(--primary); color: var(--white); }
-.btn-outline { background: var(--white); border: 2.5px solid var(--primary); color: var(--primary); }
-
-/* 010: BOTAO DE SALVAR (FIXO - ACESSIBILIDADE DE GRAVACAO) */
-.btn-save { 
-    background: var(--success); 
-    color: var(--white); 
-    position: fixed; 
-    bottom: 85px; 
-    left: 50%; 
-    transform: translateX(-50%); 
-    width: 92%; 
-    max-width: 760px;
-    z-index: 1200; 
-    box-shadow: 0 5px 25px rgba(0,0,0,0.4); 
-    height: 60px;
-}
-
-.btn-sm { padding: 10px 15px; font-size: 12px; width: auto; margin: 4px; }
-.btn-icon { background: #eee; border-radius: 8px; padding: 12px; border: 1px solid #ccc; margin-left: 5px; cursor: pointer; }
-
-/* 011: ENTRADA DE DADOS E FORMULARIOS (DENSIDADE SISAB) */
-label { 
-    display: block; 
-    margin-top: 18px; 
-    font-weight: 800; 
-    font-size: 11px; 
-    color: #555; 
-}
-
-input, select, textarea { 
-    width: 100%; 
-    min-height: 50px; 
-    padding: 14px; 
-    margin-top: 6px; 
-    border: 2px solid #ced4da; 
-    border-radius: 10px; 
-    font-size: 16px; 
-    background: #ffffff;
-    color: #000000;
-}
-
-input:focus, select:focus, textarea:focus { 
-    border-color: var(--primary); 
-    outline: none; 
-    background: #fdfdfd; 
-}
-
-textarea { min-height: 100px; resize: none; }
-
-/* 012: GRIDS DE POSICIONAMENTO */
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
 .hidden { display: none !important; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.grid-check { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 10px; }
 
-/* 013: BADGES DE AGRAVOS EPIDEMIOLOGICOS (OS 19 AGRAVOS) */
-.badge { 
-    padding: 6px 10px; 
-    border-radius: 6px; 
-    font-size: 10px; 
-    color: #ffffff; 
-    margin: 3px; 
-    font-weight: 900; 
-    display: inline-block; 
-}
-.bg-hiper { background: #c62828; }
-.bg-dia { background: #37474f; }
-.bg-gest { background: var(--gestante-pink); }
-.bg-idoso { background: var(--idoso-purple); }
-.bg-sm { background: var(--mental-orange); }
-.bg-vacinado { background: #2e7d32; }
-.bg-atencao { background: #ef6c00; }
+.check-box { background: #fff; border: 1px solid #ddd; padding: 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.check-box input { width: 22px; height: 22px; margin: 0; }
 
-/* 014: MODAIS DE CONFLITO E PENDENCIA (Z-INDEX 9999) */
-.modal-overlay { 
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
-    background: rgba(0,0,0,0.85); 
-    display: flex; align-items: center; justify-content: center; 
-    z-index: 9999; 
-    padding: 20px; 
-    backdrop-filter: blur(4px);
-}
+.badge { padding: 4px 8px; border-radius: 5px; font-size: 11px; color: white; margin-right: 4px; font-weight: bold; display: inline-block; margin-bottom: 4px; }
+.bg-hiper { background: #d32f2f; } .bg-dia { background: #455a64; } .bg-gest { background: var(--gestante-pink); } 
+.bg-acam { background: #673ab7; } .bg-fum { background: #795548; } .bg-alc { background: #ff9800; } 
+.bg-drog { background: #607d8b; } .bg-avc { background: #f44336; } .bg-inf { background: #b71c1c; } 
+.bg-offline { background: #17a2b8; } .bg-sync { background: #218838; } .bg-def { background: #009688; } 
+.bg-renal { background: #3f51b5; } .bg-resp { background: #03a9f4; } .bg-cancer { background: #9c27b0; } 
+.bg-mental { background: #ff5722; }
 
-.modal-content { 
-    background: var(--white); 
-    width: 100%; 
-    max-width: 500px; 
-    border-radius: 20px; 
-    padding: 30px; 
-    box-shadow: 0 20px 60px rgba(0,0,0,0.6); 
-}
+.footer-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: flex; border-top: 1px solid #ddd; padding: 5px; z-index: 1001; }
+.nav-item { flex: 1; text-align: center; font-size: 10px; color: #777; padding: 10px 0; cursor: pointer; }
+.nav-item.active { color: var(--primary); font-weight: bold; }
 
-/* 015: MODOS DE VISUALIZACAO (VIEW ENGINE) */
-.view-compact { 
-    padding: 12px; 
-    background: var(--white); 
-    margin-bottom: 10px; 
-    border-radius: 10px; 
-    border-left: 6px solid var(--primary);
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-}
+.secao-titulo { background: #eee; padding: 8px; font-size: 12px; font-weight: bold; margin-top: 15px; border-radius: 4px; color: #444; border-left: 4px solid var(--primary); }
+.info-label { font-size: 11px; color: #888; text-transform: uppercase; font-weight: bold; margin-top: 4px; }
+.info-valor { font-size: 14px; color: #333; margin-bottom: 6px; }
+.input-error-msg { color: var(--danger); font-size: 11px; font-weight: bold; margin-top: 2px; display: none; }
 
-.view-list { 
-    display: flex; 
-    justify-content: space-between; 
-    padding: 12px; 
-    background: var(--white); 
-    border-bottom: 1px solid #e0e0e0; 
-    font-size: 13px; 
-}
+.gestante-badge-info { background: #fce4ec; color: #c2185b; padding: 10px; border-radius: 8px; font-size: 12px; margin-top: 10px; border: 1px solid #f8bbd0; font-weight: bold; }
+.alerta-trimestre { display: block; margin-top: 4px; font-size: 11px; text-transform: uppercase; }
 
-/* 016: BARRA DE NAVEGACAO INFERIOR (FOOTER NAV) */
-.footer-nav { 
-    position: fixed; 
-    bottom: 0; left: 0; right: 0; 
-    background: var(--white); 
-    display: flex; 
-    border-top: 1px solid #dee2e6; 
-    padding: 12px 0; 
-    z-index: 1100; 
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-}
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; opacity: 0; visibility: hidden; transition: 0.2s; padding: 20px; }
+.modal-overlay.active { opacity: 1; visibility: visible; }
+.modal-content { background: white; width: 100%; max-width: 400px; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transform: translateY(-20px); transition: 0.2s; }
+.modal-overlay.active .modal-content { transform: translateY(0); }
+.modal-title { font-size: 18px; font-weight: bold; margin-top: 0; margin-bottom: 10px; color: var(--primary); }
+.modal-text { font-size: 15px; margin-bottom: 20px; color: #444; line-height: 1.4; }
+.modal-input { margin-bottom: 15px; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.modal-btn { padding: 10px 15px; font-size: 14px; margin: 0; width: auto; flex: 1; }
 
-.nav-item { 
-    flex: 1; 
-    text-align: center; 
-    font-size: 11px; 
-    color: #6c757d; 
-    font-weight: 800; 
-    cursor: pointer;
-}
-
-.nav-item.active { color: var(--primary); }
-
-/* 017: COMPONENTES DE CADASTRO DOMICILIAR */
-.house-info-box {
-    background: #e9ecef;
-    padding: 15px;
-    border-radius: 10px;
-    margin-top: 15px;
-    border-left: 5px solid var(--secondary);
-}
-
-/* 018: AJUSTES PARA ACESSIBILIDADE DE TEXTO */
-.info-label { font-size: 10px; color: #888; font-weight: bold; margin-bottom: 2px; }
-.info-valor { color: #000; margin-bottom: 10px; font-weight: 500; }
+.pendencia-ativa-no-card { background: #fff8e1; border: 1px solid #ffe082; padding: 8px; border-radius: 6px; margin-top: 10px; font-size: 12px; color: #795548; }

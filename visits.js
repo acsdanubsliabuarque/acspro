@@ -1,234 +1,98 @@
-/* ==========================================================================
-   005: MÓDULO DE VISITAS DOMICILIARES, SINAIS VITAIS E PENDÊNCIAS
-   DOCUMENTAÇÃO: MOTOR DE PRODUTIVIDADE E MONITORAMENTO EPIDEMIOLÓGICO
-   ESTE ARQUIVO IMPLEMENTA A FICHA DE VISITA DOMICILIAR COMPLETA DO SISAB
-   ========================================================================== */
-
-window.Visits = {
-
-    /* 001: MOTOR DE INICIALIZACAO DA VISITA (DIRETRIZ 7) */
+const Visits = {
     async start(id) {
-        const municipe = await DB.get("municipes", id);
-        if (!municipe) return Utils.CustomModals.alert("ERRO: MUNÍCIPE NÃO LOCALIZADO NO BANCO.");
-
-        // 002: DEFINE O ESTADO DA VISITA ATIVA
-        AppState.activePatient = municipe;
+        const p = await DB.get("municipes", id);
+        AppState.activePatient = p;
         AppState.visitStartTime = new Date();
-
-        // 003: PREPARA A INTERFACE COM DADOS DE IDENTIFICAÇÃO (ONIPRESENÇA DA IDADE)
-        const idade = Utils.calculateAge(municipe.nasc);
-        document.getElementById('v-nome-label').innerText = `VISITA: ${municipe.nome} (${idade} ANOS)`;
-        document.getElementById('v-data').value = new Date().toLocaleDateString('pt-BR');
+        document.getElementById('v-nome-txt').innerText = p.nome;
+        document.getElementById('v-timer-info').innerText = `VISITA INICIADA ÀS: ${AppState.visitStartTime.toLocaleTimeString()}`;
+        document.getElementById('v-alerta').innerHTML = `<strong>NOTAS PERMANENTES:</strong> ${p.obs || 'NENHUMA'}`;
+        document.getElementById('v-relato').value = ""; document.getElementById('v-pendencia').value = "";
+        document.querySelectorAll('input[name="motivo"]').forEach(c => c.checked = false);
         
-        // 004: LIMPEZA TÉCNICA DOS CAMPOS DA FICHA
-        this.resetForm();
-
-        // 005: LÓGICA DE VISITA EM CADEIA (DIRETRIZ 7)
-        // LOCALIZA AUTOMATICAMENTE TODOS OS OUTROS MORADORES DA MESMA UNIDADE HABITACIONAL
-        const famArea = document.getElementById('v-familiares-area');
-        if (famArea) {
-            famArea.innerHTML = "";
-            const moradores = await DB.getByIndex("municipes", "idx_endereco_chave", [municipe.rua, municipe.num, municipe.comp]);
-            
-            // FILTRA PARA NÃO MOSTRAR O PRÓPRIO MUNÍCIPE NA LISTA DE "OUTROS MORADORES"
-            const outros = moradores.filter(m => m.id !== municipe.id);
-            
-            if (outros.length > 0) {
-                famArea.innerHTML = `<div style="background:#e3f2fd; padding:10px; border-radius:8px; margin-bottom:15px;">
-                    <div style="font-size:10px; font-weight:bold; color:#1565c0; margin-bottom:5px;">OUTROS MORADORES NESTE ENDEREÇO:</div>`;
-                
-                outros.forEach(m => {
-                    famArea.innerHTML += `
-                        <div style="display:flex; justify-content:space-between; align-items:center; background:#fff; padding:8px; margin-bottom:5px; border-radius:5px; border:1px solid #bbdefb;">
-                            <div style="font-size:12px;"><b>${m.nome}</b><br><small>${Utils.calculateAge(m.nasc)} ANOS | ${m.relacao}</small></div>
-                            <button class="btn btn-sm btn-main" style="width:auto; margin:0;" onclick="Visits.start(${m.id})">VISITAR</button>
-                        </div>`;
-                });
-                famArea.innerHTML += `</div>`;
-            }
-        }
-
+        const vGest = document.getElementById('v-alerta-gestante');
+        if (p.gest) {
+            const gi = Utils.getGestationalInfo(p.dum);
+            vGest.innerHTML = `<strong>DADOS GESTACIONAIS:</strong> ${gi.res} | DPP: ${gi.dpp}`;
+            vGest.classList.remove('hidden'); vGest.className = "gestante-badge-info";
+        } else vGest.classList.add('hidden');
+        
+        const famDiv = document.getElementById('v-familiares');
+        const famList = document.getElementById('lista-familiares-vinculados');
+        famList.innerHTML = "";
+        if (p.isResp === 'SIM') {
+            const parts = await DB.getByIndex("municipes", "respId", p.id);
+            if (parts.length) {
+                famDiv.classList.remove('hidden');
+                parts.forEach(m => famList.innerHTML += `<div class="card-familiar">${m.nome} (${m.relacao})<br><button class="btn btn-xs btn-outline" onclick="Visits.start(${m.id})">ABRIR VISITA</button></div>`);
+            } else famDiv.classList.add('hidden');
+        } else famDiv.classList.add('hidden');
         Nav.goTo('tela-visita');
     },
-
-    /* 006: RESET DE FORMULÁRIO PARA EVITAR CONTAMINAÇÃO DE DADOS */
-    resetForm() {
-        document.getElementById('v-pa').value = "";
-        document.getElementById('v-hgt').value = "";
-        document.getElementById('v-peso').value = "";
-        document.getElementById('v-estatura').value = "";
-        document.getElementById('v-relato').value = "";
-        document.getElementById('v-pendencia').value = "";
-        document.getElementById('v-desfecho').value = "VISITA REALIZADA";
-        
-        // DESMARCA TODOS OS MOTIVOS SISAB
-        document.querySelectorAll('input[name="v-motivo"]').forEach(cb => cb.checked = false);
-    },
-
-    /* 007: MOTOR DE GRAVACAO - CONFORMIDADE SISAB/E-SUS */
     async save() {
-        // 008: COLETA DE MOTIVOS (CHECKBOXES MULTIPLOS)
-        const motivosSelecionados = Array.from(document.querySelectorAll('input[name="v-motivo"]:checked')).map(cb => cb.value);
+        const motivos = Array.from(document.querySelectorAll('input[name="motivo"]:checked')).map(i => i.value);
+        const relato = document.getElementById('v-relato').value.trim();
+        if (!motivos.length || !relato) return CustomModals.alert("ERRO: MOTIVOS E RELATO SÃO OBRIGATÓRIOS.");
         
-        const desfecho = document.getElementById('v-desfecho').value;
-        const relato = document.getElementById('v-relato').value.toUpperCase().trim();
-        const pendenciaTexto = document.getElementById('v-pendencia').value.toUpperCase().trim();
-
-        // 009: VALIDAÇÃO DE CAMPOS OBRIGATÓRIOS DA VISITA
-        if (motivosSelecionados.length === 0 && desfecho === "VISITA REALIZADA") {
-            return Utils.CustomModals.alert("ATENÇÃO: SELECIONE PELO MENOS UM MOTIVO PARA A VISITA REALIZADA.");
-        }
-        if (!relato) {
-            return Utils.CustomModals.alert("ATENÇÃO: O RELATO DA EVOLUÇÃO É OBRIGATÓRIO PARA O SISAB.");
-        }
-
-        // 010: MONTAGEM DO OBJETO TÉCNICO DE VISITA
-        const visitaData = {
-            pacienteId: AppState.activePatient.id,
-            nome: AppState.activePatient.nome,
-            dataTS: Date.now(),
-            dataBR: new Date().toLocaleDateString('pt-BR'),
-            horaVisita: new Date().toLocaleTimeString('pt-BR'),
-            turno: document.getElementById('v-turno').value,
-            desfechoVisita: desfecho,
-            motivos: motivosSelecionados.join(", "),
-            
-            // SINAIS VITAIS (DIRETRIZ 7)
-            pa: document.getElementById('v-pa').value,
-            hgt: document.getElementById('v-hgt').value,
-            peso: document.getElementById('v-peso').value,
-            estatura: document.getElementById('v-estatura').value,
-            
-            relato: relato,
-            pendencia: pendenciaTexto,
-            resolvida: false, // TODA PENDENCIA NASCE ATIVA
-            dataResolvido: "",
-            relatoResolvido: ""
+        const visit = { 
+            pacienteId: AppState.activePatient.id, 
+            nome: AppState.activePatient.nome, 
+            dataTS: Date.now(), 
+            motivos: motivos.join(", "), 
+            relato: relato.toUpperCase(), 
+            pendencia: document.getElementById('v-pendencia').value.toUpperCase(), 
+            resolvida: false,
+            relatoResolvido: "",
+            dataResolvido: ""
         };
-
-        try {
-            await DB.put("visitas", visitaData);
-            await Utils.CustomModals.alert("VISITA REGISTRADA COM SUCESSO NO PRONTUÁRIO.");
-            Nav.goTo('tela-home', true);
-        } catch (error) {
-            Utils.CustomModals.alert("ERRO AO SALVAR VISITA NO BANCO LOCAL.");
-        }
+        await DB.add("visitas", visit);
+        await CustomModals.alert("VISITA SALVA COM SUCESSO!");
+        Nav.goTo('tela-home', true);
     },
-
-    /* 011: MOTOR DE HISTÓRICO INDIVIDUAL */
     async viewHistory(id) {
         const p = await DB.get("municipes", id);
-        const visitas = await DB.getByIndex("visitas", "idx_pacienteId", id);
-        
-        // ORDENAÇÃO CRONOLÓGICA REVERSA (MAIS RECENTE PRIMEIRO)
-        visitas.sort((a, b) => b.dataTS - a.dataTS);
-
-        const container = document.getElementById('lista-historico');
-        document.getElementById('hist-nome').innerText = `HISTÓRICO TÉCNICO: ${p.nome}`;
-        container.innerHTML = "";
-
-        if (visitas.length === 0) {
-            container.innerHTML = `<div style="text-align:center; padding:30px; opacity:0.5;">NENHUMA VISITA REGISTRADA PARA ESTE CIDADÃO.</div>`;
-        }
-
-        visitas.forEach(v => {
-            container.innerHTML += `
-                <div class="card" style="border-left-color: var(--secondary); font-size:13px;">
-                    <div style="display:flex; justify-content:space-between; font-weight:bold; color:var(--primary); margin-bottom:10px;">
-                        <span>📅 ${v.dataBR} - ${v.turno}</span>
-                        <span>${v.pa ? 'PA: '+v.pa : ''} ${v.hgt ? ' | HGT: '+v.hgt : ''}</span>
-                    </div>
-                    <div style="margin-bottom:8px;"><b>MOTIVOS:</b> ${v.motivos}</div>
-                    <div style="background:#f8f9fa; padding:10px; border-radius:8px; border-left:3px solid #dee2e6;">
-                        <i>"${v.relato}"</i>
-                    </div>
-                    ${v.pendencia ? `
-                        <div class="pendencia-ativa-no-card" style="background:${v.resolvida ? '#e8f5e9' : '#fffde7'}; border-color:${v.resolvida ? '#c8e6c9' : '#fff59d'}; animation:none;">
-                            <div style="flex:1;">
-                                <b>${v.resolvida ? '✅ RESOLVIDA' : '⚠️ PENDÊNCIA'}:</b> ${v.pendencia}
-                                ${v.resolvida ? `<br><small style="color:#2e7d32;">SOLUÇÃO: ${v.relatoResolvido} (${v.dataResolvido})</small>` : ''}
-                            </div>
-                            ${!v.resolvida ? `<button class="btn-icon" onclick="Visits.resolvePendency(${v.id})">✅</button>` : ''}
-                        </div>` : ''}
-                </div>`;
-        });
+        const hist = (await DB.getByIndex("visitas", "pacienteId", id)).sort((a,b) => b.dataTS - a.dataTS);
+        document.getElementById('hist-nome-header').innerText = `HISTÓRICO: ${p.nome}`;
+        const list = document.getElementById('lista-historico');
+        list.innerHTML = hist.map(v => `
+            <div class="card card-historico" style="border-left-color: ${v.pendencia ? (v.resolvida ? '#218838' : '#ffc107') : '#6c757d'}">
+                <b>📅 ${new Date(v.dataTS).toLocaleDateString()} - ${new Date(v.dataTS).toLocaleTimeString()}</b><br>
+                <small><b>MOTIVOS:</b> ${v.motivos}</small>
+                <p><b>EVOLUÇÃO:</b> "${v.relato}"</p>
+                ${v.pendencia ? `<div style="background:#fff; padding:8px; border-radius:5px; border:1px solid #ddd; margin-top:5px;">
+                    <b style="color:${v.resolvida ? 'green' : 'red'}">PENDÊNCIA: ${v.pendencia}</b><br>
+                    ${v.resolvida ? `<small>✅ RESOLVIDO EM ${v.dataResolvido}: ${v.relatoResolvido}</small><br><button class="btn btn-xs btn-danger" onclick="Visits.revertPendency(${v.id}, ${p.id})">REVERTER DESFECHO</button>` : `<small>⚠️ AGUARDANDO RESOLUÇÃO</small>`}
+                </div>` : ''}
+            </div>`).join('') || "NENHUMA VISITA REGISTRADA.";
         Nav.goTo('tela-historico');
     },
-
-    /* 012: GESTÃO AVANÇADA DE PENDÊNCIAS (DIRETRIZ 8) */
     async viewPendencies() {
-        const todas = await DB.getAll("visitas");
-        const ativas = todas.filter(v => v.pendencia && !v.resolvida);
-        
-        const container = document.getElementById('lista-resultados');
-        container.innerHTML = `<h3 style="text-align:center; margin-bottom:20px;">CONTROLE DE PENDÊNCIAS ATIVAS (${ativas.length})</h3>`;
-
-        if (ativas.length === 0) {
-            container.innerHTML += `<div style="text-align:center; padding:50px; opacity:0.5;">PARABÉNS! NÃO HÁ PENDÊNCIAS ATIVAS NO TERRITÓRIO.</div>`;
-        } else {
-            for (const v of ativas) {
-                container.innerHTML += `
-                    <div class="card card-pendencia">
-                        <div class="info-label">CIDADÃO / ENDEREÇO</div>
-                        <div class="info-valor"><strong>${v.nome}</strong></div>
-                        <div class="pendencia-ativa-no-card">
-                            <span style="font-weight:bold;">${v.pendencia}</span>
-                            <div style="display:flex; gap:8px;">
-                                <button class="btn-icon" title="EDITAR TEXTO" onclick="Visits.editPendency(${v.id})">✏️</button>
-                                <button class="btn-icon" title="CONCLUIR" onclick="Visits.resolvePendency(${v.id})">✅</button>
-                            </div>
-                        </div>
-                        <div style="font-size:10px; margin-top:10px; color:#888;">GERADA NA VISITA DE: ${v.dataBR}</div>
-                    </div>`;
+        const all = await DB.getAll("visitas");
+        const pends = all.filter(v => v.pendencia && !v.resolvida);
+        const list = document.getElementById('lista-resultados');
+        list.innerHTML = `<h3>PENDÊNCIAS GLOBAIS EM ABERTO (${pends.length})</h3>`;
+        if(pends.length === 0) list.innerHTML += "<p>NENHUMA PENDÊNCIA ENCONTRADA.</p>";
+        else {
+            for (const p of pends) {
+                list.innerHTML += `<div class="card card-pendencia"><b>MUNÍCIPE: ${p.nome}</b><br>DATA DA VISITA: ${new Date(p.dataTS).toLocaleDateString()}<br>PENDÊNCIA: <i style="color:red">${p.pendencia}</i><br><button class="btn btn-save btn-sm" onclick="Visits.resolvePendency(${p.id})">RESOLVER PENDÊNCIA</button></div>`;
             }
         }
         Nav.goTo('tela-resultados');
     },
-
-    /* 013: RESOLUÇÃO E ARQUIVAMENTO (DIRETRIZ 8) */
     async resolvePendency(id) {
-        const visita = await DB.get("visitas", id);
-        if (!visita) return;
-
-        const solucao = await Utils.CustomModals.prompt("RESOLUÇÃO DE PENDÊNCIA", `O QUE FOI FEITO PARA RESOLVER: "${visita.pendencia}"?`);
-        
-        if (solucao && solucao.trim() !== "") {
-            visita.resolvida = true;
-            visita.relatoResolvido = solucao;
-            visita.dataResolvido = new Date().toLocaleString('pt-BR');
-            
-            await DB.put("visitas", visita);
-
-            // 014: LOG DE ARQUIVO MORTO PARA AUDITORIA
-            const logArquivo = {
-                visitaId: visita.id,
-                pacienteId: visita.pacienteId,
-                nome Municipe: visita.nome,
-                pendenciaOriginal: visita.pendencia,
-                solucaoAplicada: solucao,
-                dataArquivamento: Date.now(),
-                dataArquivamentoBR: visita.dataResolvido
-            };
-            await DB.put("arquivo_pendencias", logArquivo);
-
-            await Utils.CustomModals.alert("PENDÊNCIA RESOLVIDA E ARQUIVADA COM SUCESSO.");
-            
-            // RECARREGA A VIEW ATUAL
-            if (AppState.history[AppState.history.length-1] === 'tela-resultados') this.viewPendencies();
-            else this.viewHistory(visita.pacienteId);
-        }
+        const relato = await CustomModals.prompt("O QUE FOI FEITO PARA RESOLVER ESTA PENDÊNCIA? (OBRIGATÓRIO)");
+        if (!relato || relato.trim() === "") return CustomModals.alert("ERRO: VOCÊ DEVE DESCREVER A SOLUÇÃO.");
+        const v = await DB.get("visitas", id);
+        v.resolvida = true; v.relatoResolvido = relato.toUpperCase(); v.dataResolvido = new Date().toLocaleString();
+        await DB.put("visitas", v);
+        await CustomModals.alert("PENDÊNCIA RESOLVIDA!");
+        this.viewPendencies();
     },
-
-    /* 015: EDIÇÃO RÁPIDA DE TEXTO DE PENDÊNCIA */
-    async editPendency(id) {
-        const visita = await DB.get("visitas", id);
-        if (!visita) return;
-
-        const novoTexto = await Utils.CustomModals.prompt("EDITAR PENDÊNCIA", "CORRIJA O TEXTO DA PENDÊNCIA:");
-        if (novoTexto && novoTexto.trim() !== "") {
-            visita.pendencia = novoTexto;
-            await DB.put("visitas", visita);
-            this.viewPendencies();
+    async revertPendency(vId, pId) {
+        if(await CustomModals.confirm("DESEJA REVERTER ESTA PENDÊNCIA?")) {
+            const v = await DB.get("visitas", vId);
+            v.resolvida = false; v.relatoResolvido = ""; v.dataResolvido = "";
+            await DB.put("visitas", v);
+            this.viewHistory(pId);
         }
     }
 };

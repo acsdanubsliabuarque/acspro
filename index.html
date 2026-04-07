@@ -1,6 +1,25 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Teste Banco ACS</title>
+</head>
+<body>
+
+<h1>Teste do sistema</h1>
+<div id="status">Carregando...</div>
+
 <script src="db.js"></script>
+
 <script>
-initDB().then(() => {
-  console.log("Banco funcionando");
-});
+  initDB()
+    .then(() => {
+      document.getElementById("status").innerText = "✅ Banco funcionando!";
+    })
+    .catch(() => {
+      document.getElementById("status").innerText = "❌ Erro no banco!";
+    });
 </script>
+
+</body>
+</html>
